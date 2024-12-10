@@ -1,0 +1,220 @@
+{
+    "_type": "Project",
+    "name": "体育赛事直播可视化系统",
+    "ownedElements": [
+        {
+            "_type": "UMLModel",
+            "name": "Use Case Model",
+            "ownedElements": [
+                {
+                    "_type": "UMLUseCaseDiagram",
+                    "name": "Main",
+                    "defaultDiagram": true,
+                    "ownedViews": [
+                        {
+                            "_type": "UMLActorView",
+                            "_id": "ACTOR1_VIEW",
+                            "model": {"$ref": "ACTOR1"},
+                            "subViews": [{"_type": "UMLNameCompartmentView"}],
+                            "position": {"x": 50, "y": 200}
+                        },
+                        {
+                            "_type": "UMLActorView",
+                            "_id": "ACTOR2_VIEW",
+                            "model": {"$ref": "ACTOR2"},
+                            "subViews": [{"_type": "UMLNameCompartmentView"}],
+                            "position": {"x": 50, "y": 400}
+                        },
+                        {
+                            "_type": "UMLPackageView",
+                            "_id": "PACKAGE1_VIEW",
+                            "model": {"$ref": "PACKAGE1"},
+                            "subViews": [{"_type": "UMLNameCompartmentView"}],
+                            "position": {"x": 200, "y": 50},
+                            "width": 300,
+                            "height": 200
+                        },
+                        {
+                            "_type": "UMLPackageView",
+                            "_id": "PACKAGE2_VIEW",
+                            "model": {"$ref": "PACKAGE2"},
+                            "subViews": [{"_type": "UMLNameCompartmentView"}],
+                            "position": {"x": 200, "y": 300},
+                            "width": 300,
+                            "height": 200
+                        },
+                        {
+                            "_type": "UMLPackageView",
+                            "_id": "PACKAGE3_VIEW",
+                            "model": {"$ref": "PACKAGE3"},
+                            "subViews": [{"_type": "UMLNameCompartmentView"}],
+                            "position": {"x": 600, "y": 175},
+                            "width": 300,
+                            "height": 200
+                        }
+                    ],
+                    "ownedElements": [
+                        {
+                            "_type": "UMLActor",
+                            "name": "观众",
+                            "_id": "ACTOR1"
+                        },
+                        {
+                            "_type": "UMLActor",
+                            "name": "系统管理员",
+                            "_id": "ACTOR2"
+                        },
+                        {
+                            "_type": "UMLPackage",
+                            "name": "赛事观看",
+                            "_id": "PACKAGE1",
+                            "ownedElements": [
+                                {
+                                    "_type": "UMLUseCase",
+                                    "name": "观看比赛直播",
+                                    "_id": "UC1",
+                                    "position": {"x": 220, "y": 70}
+                                },
+                                {
+                                    "_type": "UMLUseCase",
+                                    "name": "切换比赛",
+                                    "_id": "UC2",
+                                    "position": {"x": 220, "y": 110}
+                                },
+                                {
+                                    "_type": "UMLUseCase",
+                                    "name": "查看比分",
+                                    "_id": "UC3",
+                                    "position": {"x": 220, "y": 150}
+                                },
+                                {
+                                    "_type": "UMLUseCase",
+                                    "name": "查看技术统计",
+                                    "_id": "UC4",
+                                    "position": {"x": 220, "y": 190}
+                                },
+                                {
+                                    "_type": "UMLUseCase",
+                                    "name": "查看球员数据",
+                                    "_id": "UC5",
+                                    "position": {"x": 220, "y": 230}
+                                }
+                            ]
+                        },
+                        {
+                            "_type": "UMLPackage",
+                            "name": "赛事管理",
+                            "_id": "PACKAGE2",
+                            "ownedElements": [
+                                {
+                                    "_type": "UMLUseCase",
+                                    "name": "导入比赛数据",
+                                    "_id": "UC6"
+                                },
+                                {
+                                    "_type": "UMLUseCase",
+                                    "name": "管理球队信息",
+                                    "_id": "UC7"
+                                },
+                                {
+                                    "_type": "UMLUseCase",
+                                    "name": "管理球员信息",
+                                    "_id": "UC8"
+                                }
+                            ]
+                        },
+                        {
+                            "_type": "UMLPackage",
+                            "name": "事件处理",
+                            "_id": "PACKAGE3",
+                            "ownedElements": [
+                                {
+                                    "_type": "UMLUseCase",
+                                    "name": "解析比赛事件",
+                                    "_id": "UC9"
+                                },
+                                {
+                                    "_type": "UMLUseCase",
+                                    "name": "渲染比赛动画",
+                                    "_id": "UC10"
+                                },
+                                {
+                                    "_type": "UMLUseCase",
+                                    "name": "更新技术统计",
+                                    "_id": "UC11"
+                                }
+                            ]
+                        }
+                    ],
+                    "relationships": [
+                        {
+                            "_type": "UMLAssociation",
+                            "end1": {"reference": "ACTOR1"},
+                            "end2": {"reference": "UC1"}
+                        },
+                        {
+                            "_type": "UMLAssociation",
+                            "end1": {"reference": "ACTOR1"},
+                            "end2": {"reference": "UC2"}
+                        },
+                        {
+                            "_type": "UMLAssociation",
+                            "end1": {"reference": "ACTOR1"},
+                            "end2": {"reference": "UC3"}
+                        },
+                        {
+                            "_type": "UMLAssociation",
+                            "end1": {"reference": "ACTOR1"},
+                            "end2": {"reference": "UC4"}
+                        },
+                        {
+                            "_type": "UMLAssociation",
+                            "end1": {"reference": "ACTOR1"},
+                            "end2": {"reference": "UC5"}
+                        },
+                        {
+                            "_type": "UMLAssociation",
+                            "end1": {"reference": "ACTOR2"},
+                            "end2": {"reference": "UC6"}
+                        },
+                        {
+                            "_type": "UMLAssociation",
+                            "end1": {"reference": "ACTOR2"},
+                            "end2": {"reference": "UC7"}
+                        },
+                        {
+                            "_type": "UMLAssociation",
+                            "end1": {"reference": "ACTOR2"},
+                            "end2": {"reference": "UC8"}
+                        },
+                        {
+                            "_type": "UMLInclude",
+                            "source": {"reference": "UC1"},
+                            "target": {"reference": "UC9"}
+                        },
+                        {
+                            "_type": "UMLInclude",
+                            "source": {"reference": "UC1"},
+                            "target": {"reference": "UC10"}
+                        },
+                        {
+                            "_type": "UMLInclude",
+                            "source": {"reference": "UC9"},
+                            "target": {"reference": "UC11"}
+                        },
+                        {
+                            "_type": "UMLExtend",
+                            "source": {"reference": "UC4"},
+                            "target": {"reference": "UC11"}
+                        },
+                        {
+                            "_type": "UMLExtend",
+                            "source": {"reference": "UC5"},
+                            "target": {"reference": "UC11"}
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+} 

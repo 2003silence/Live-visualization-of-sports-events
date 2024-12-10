@@ -1,5 +1,5 @@
 # 体育赛事直播可视化系统
-
+npm run dev
 ## 项目简介
 本项目是一个面向篮球赛事的直播可视化系统，通过图形化和动画的形式为用户提供实时的赛事直播服务。系统将文字形式的比赛事件流转换为动态的可视化展示，让用户能够更直观地了解比赛进程。
 
@@ -40,3 +40,25 @@
 - 构建工具：Vite
 
 ## 项目结构 
+src/
+├── components/
+│   ├── GameViewer.tsx      # 比赛场景渲染组件
+│   ├── StatsViewer.tsx     # 技术统计显示组件
+│   ├── GameControl.tsx     # 比赛控制组件（播放、暂停等）
+│   ├── GameProgress.tsx    # 比赛进度条组件
+│   ├── Loading.tsx         # 加载提示组件
+│   └── TechnicalStats.tsx  # 技术统计详情组件
+├── core/
+│   ├── renderer/
+│   │   └── GameRenderer.ts # 游戏渲染核心
+│   └── parser/
+│       └── EventParser.ts  # 事件解析器
+├── data/
+│   └── gameData.ts         # 比赛数据
+├── types/
+│   ├── index.ts            # 类型定义
+│   └── gsap.d.ts          # GSAP动画库类型定义
+├── utils/
+│   └── createBasketballTexture.ts # 篮球纹理创建工具
+├── App.tsx                 # 主应用组件
+└── main.tsx               # 应用入口

@@ -1,3 +1,36 @@
+// 添加到文件开头
+export interface GameDataEvent {
+    time: string;
+    homeTeamAction: string;
+    score: string;
+    awayTeamAction: string;
+}
+
+// 添加游戏数据类型
+export interface GameDataInfo {
+    id: string;
+    date: string;
+    venue: string;
+    homeTeam: {
+        id: string;
+        name: string;
+        logo: string;
+    };
+    awayTeam: {
+        id: string;
+        name: string;
+        logo: string;
+    };
+}
+
+// 添加原始游戏数据类型
+export interface RawGameData {
+    [key: string]: {
+        data: string;
+        info: GameDataInfo;
+    };
+}
+
 // 球员
 export interface Player {
     id: string;
@@ -65,22 +98,16 @@ export interface TeamStats {
 export interface GameEvent {
     id: string;
     type: GameEventType;
-    team: string;
-    quarter: number;
+    team: 'home' | 'away';
+    player: string;
     time: string;
-    player?: string;
-    points?: number;
+    quarter: number;
     score?: {
         home: number;
         away: number;
     };
-    assists?: number;
-    blocks?: number;
-    steals?: number;
-    fouls?: number;
-    turnovers?: number;
     isOffensive?: boolean;
-    description: string;
+    description?: string;
 }
 
 // 事件类型
@@ -104,7 +131,8 @@ export enum GameEventType {
     TIMEOUT = 'TIMEOUT',
     SUBSTITUTION = 'SUBSTITUTION',
     JUMP_BALL = 'JUMP_BALL',
-    VIOLATION = 'VIOLATION'
+    VIOLATION = 'VIOLATION',
+    UNKNOWN = 'UNKNOWN'
 }
 
 // 比赛状态

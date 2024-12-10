@@ -7,6 +7,7 @@ import { EventParser } from './core/parser/EventParser';
 import { gameData } from './data/gameData';
 import { GameControl } from './components/GameControl';
 import { GameProgress } from './components/GameProgress';
+import { getGameData, getGameInfo } from './data/gameData';
 
 const App: React.FC = () => {
     const [gameState, setGameState] = useState<GameState | null>(null);
@@ -76,7 +77,8 @@ const App: React.FC = () => {
             '克内克特',
             '马克斯·克里斯蒂',
             '贾克森-海耶斯',
-            '文森特'
+            '文森特',
+            'B. 勒布朗-詹姆斯'
         ];
 
         const wolvesPlayers = [
@@ -114,95 +116,113 @@ const App: React.FC = () => {
         const team = event.team === 'home' ? state.homeTeam : state.awayTeam;
         const player = team.players.find(p => p.name === event.player);
 
-        if (player) {
-            // 更新上场时间
-            if (event.time) {
-                const [minutes] = event.time.split(':').map(Number);
-                player.stats.playTime = minutes;
-            }
-
-            switch (event.type) {
-                case GameEventType.TWO_POINTS_MADE:
-                    player.stats.points += 2;
-                    player.stats.twoPointsMade += 1;
-                    player.stats.twoPointsAttempted += 1;
-                    team.stats.points += 2;
-                    team.stats.twoPointsMade += 1;
-                    team.stats.twoPointsAttempted += 1;
-                    break;
-                case GameEventType.THREE_POINTS_MADE:
-                    player.stats.points += 3;
-                    player.stats.threePointsMade += 1;
-                    player.stats.threePointsAttempted += 1;
-                    team.stats.points += 3;
-                    team.stats.threePointsMade += 1;
-                    team.stats.threePointsAttempted += 1;
-                    break;
-                case GameEventType.TWO_POINTS_MISSED:
-                    player.stats.twoPointsAttempted += 1;
-                    team.stats.twoPointsAttempted += 1;
-                    break;
-                case GameEventType.THREE_POINTS_MISSED:
-                    player.stats.threePointsAttempted += 1;
-                    team.stats.threePointsAttempted += 1;
-                    break;
-                case GameEventType.FREE_THROW_MADE:
-                    player.stats.points += 1;
-                    player.stats.freeThrowsMade += 1;
-                    player.stats.freeThrowsAttempted += 1;
-                    team.stats.points += 1;
-                    team.stats.freeThrowsMade += 1;
-                    team.stats.freeThrowsAttempted += 1;
-                    break;
-                case GameEventType.FREE_THROW_MISSED:
-                    player.stats.freeThrowsAttempted += 1;
-                    team.stats.freeThrowsAttempted += 1;
-                    break;
-                case GameEventType.REBOUND:
-                    if (event.isOffensive) {
-                        player.stats.offensiveRebounds += 1;
-                        player.stats.rebounds += 1;
-                        team.stats.offensiveRebounds += 1;
-                        team.stats.rebounds += 1;
-                    } else {
-                        player.stats.defensiveRebounds += 1;
-                        player.stats.rebounds += 1;
-                        team.stats.defensiveRebounds += 1;
-                        team.stats.rebounds += 1;
-                    }
-                    break;
-                case GameEventType.ASSIST:
-                    player.stats.assists += 1;
-                    team.stats.assists += 1;
-                    break;
-                case GameEventType.BLOCK:
-                    player.stats.blocks += 1;
-                    team.stats.blocks += 1;
-                    break;
-                case GameEventType.STEAL:
-                    player.stats.steals += 1;
-                    team.stats.steals += 1;
-                    break;
-                case GameEventType.FOUL:
-                    player.stats.fouls += 1;
-                    team.stats.fouls += 1;
-                    break;
-                case GameEventType.TURNOVER:
-                    player.stats.turnovers += 1;
-                    team.stats.turnovers += 1;
-                    break;
-            }
-
-            // 更新比分
-            if (event.score) {
-                state.homeTeam.stats.points = event.score.home;
-                state.awayTeam.stats.points = event.score.away;
-            }
+        if (!player) {
+            console.warn(`Player not found: ${event.player}`);
+            return;
         }
 
         // 更新比赛时间和节数
         state.time = event.time;
         state.quarter = event.quarter;
+
+        // 根据事件类型更新统计数据
+        switch (event.type) {
+            case GameEventType.TWO_POINTS_MADE:
+                player.stats.points += 2;
+                player.stats.twoPointsMade += 1;
+                player.stats.twoPointsAttempted += 1;
+                team.stats.twoPointsMade += 1;
+                team.stats.twoPointsAttempted += 1;
+                team.stats.points += 2;
+                break;
+
+            case GameEventType.THREE_POINTS_MADE:
+                player.stats.points += 3;
+                player.stats.threePointsMade += 1;
+                player.stats.threePointsAttempted += 1;
+                team.stats.threePointsMade += 1;
+                team.stats.threePointsAttempted += 1;
+                team.stats.points += 3;
+                break;
+
+            case GameEventType.TWO_POINTS_MISSED:
+                player.stats.twoPointsAttempted += 1;
+                team.stats.twoPointsAttempted += 1;
+                break;
+
+            case GameEventType.THREE_POINTS_MISSED:
+                player.stats.threePointsAttempted += 1;
+                team.stats.threePointsAttempted += 1;
+                break;
+
+            case GameEventType.FREE_THROW_MADE:
+                player.stats.points += 1;
+                player.stats.freeThrowsMade += 1;
+                player.stats.freeThrowsAttempted += 1;
+                team.stats.freeThrowsMade += 1;
+                team.stats.freeThrowsAttempted += 1;
+                team.stats.points += 1;
+                break;
+
+            case GameEventType.FREE_THROW_MISSED:
+                player.stats.freeThrowsAttempted += 1;
+                team.stats.freeThrowsAttempted += 1;
+                break;
+
+            case GameEventType.REBOUND:
+                // 从描述中提取篮板数据
+                const reboundMatch = event.description.match(/\(进攻篮板:(\d+)\s*防守篮板:(\d+)\)/);
+                if (reboundMatch) {
+                    // 直接使用括号中的数字作为总数
+                    const offensiveTotal = parseInt(reboundMatch[1]);
+                    const defensiveTotal = parseInt(reboundMatch[2]);
+                    
+                    // 更新球员统计
+                    player.stats.offensiveRebounds = offensiveTotal;
+                    player.stats.defensiveRebounds = defensiveTotal;
+                    player.stats.rebounds = offensiveTotal + defensiveTotal;
+                    
+                    // 更新球队统计
+                    // 需要重新计算球队的总篮板数
+                    team.stats.offensiveRebounds = team.players.reduce((sum, p) => sum + p.stats.offensiveRebounds, 0);
+                    team.stats.defensiveRebounds = team.players.reduce((sum, p) => sum + p.stats.defensiveRebounds, 0);
+                    team.stats.rebounds = team.stats.offensiveRebounds + team.stats.defensiveRebounds;
+                }
+                break;
+
+            case GameEventType.ASSIST:
+                player.stats.assists += 1;
+                team.stats.assists += 1;
+                break;
+
+            case GameEventType.BLOCK:
+                player.stats.blocks += 1;
+                team.stats.blocks += 1;
+                break;
+
+            case GameEventType.STEAL:
+                player.stats.steals += 1;
+                team.stats.steals += 1;
+                break;
+
+            case GameEventType.FOUL:
+                player.stats.fouls += 1;
+                team.stats.fouls += 1;
+                break;
+
+            case GameEventType.TURNOVER:
+                player.stats.turnovers += 1;
+                team.stats.turnovers += 1;
+                break;
+        }
+
+        // 添加调试日志
+        console.log(`Event processed: ${event.type}`, {
+            player: player.name,
+            playerStats: player.stats,
+            teamStats: team.stats,
+            event: event
+        });
     };
 
     const loadGameData = async () => {
@@ -210,8 +230,17 @@ const App: React.FC = () => {
             setLoadingMessage('加载比赛数据...');
             console.log('Loading game data...');
             
+            // 获取默认比赛数据
+            const currentGameId = 'lakers_vs_wolves';
+            const currentGameData = getGameData(currentGameId);
+            const currentGameInfo = getGameInfo(currentGameId);
+            
+            if (!currentGameData || !currentGameInfo) {
+                throw new Error('Failed to load game data');
+            }
+            
             setLoadingMessage('解析比赛事件...');
-            const events = EventParser.getInstance().parseEventText(gameData);
+            const events = EventParser.getInstance().parseEventText(currentGameData);
             console.log(`Parsed ${events.length} events:`, events);
             
             setLoadingMessage('处理比赛数据...');
@@ -219,7 +248,7 @@ const App: React.FC = () => {
             console.log('Teams initialized:', { homeTeam, awayTeam });
             
             const initialState: GameState = {
-                id: 'game1',
+                id: currentGameId,
                 homeTeam,
                 awayTeam,
                 quarter: 1,
@@ -300,6 +329,8 @@ const App: React.FC = () => {
     };
 
     const handleSeek = (index: number) => {
+        if (!gameState) return;
+        
         if (isPlaying) {
             handlePause();
         }
@@ -307,20 +338,27 @@ const App: React.FC = () => {
         // 重新初始化状态
         const { homeTeam, awayTeam } = initializeTeams();
         const newState: GameState = {
-            ...gameState!,
+            ...gameState,
             homeTeam,
             awayTeam,
             quarter: 1,
             time: '12:00'
         };
 
-        // 重新处理到目标事件之前的所有事件
+        // 重新处理所有事件直到目标索引
         for (let i = 0; i <= index; i++) {
-            processEvent(newState, gameState!.events[i]);
+            processEvent(newState, gameState.events[i]);
         }
 
         setGameState(newState);
         setCurrentEventIndex(index);
+
+        // 记录日志用于调试
+        console.log('State after seek:', {
+            index,
+            homeTeamStats: newState.homeTeam.stats,
+            awayTeamStats: newState.awayTeam.stats
+        });
     };
 
     // 监听当前事件索引变化

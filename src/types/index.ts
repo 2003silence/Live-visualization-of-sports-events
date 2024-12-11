@@ -106,8 +106,9 @@ export interface GameEvent {
         home: number;
         away: number;
     };
-    isOffensive?: boolean;
-    description?: string;
+    isOffensive: boolean;
+    description: string;
+    points: number;
 }
 
 // 事件类型

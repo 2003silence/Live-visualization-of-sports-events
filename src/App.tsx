@@ -19,31 +19,34 @@ const App: React.FC = () => {
 
     // 初始化球员数据
     const initializePlayers = (teamId: string, playerNames: string[]): Player[] => {
-        return playerNames.map(name => ({
-            id: `${teamId}-${name}`,
-            name,
-            number: '', // 可以后续添加球衣号码
-            position: '', // 可以后续添加位置信息
-            team: teamId,
-            stats: {
-                points: 0,
-                rebounds: 0,
-                assists: 0,
-                steals: 0,
-                blocks: 0,
-                fouls: 0,
-                turnovers: 0,
-                playTime: 0,
-                twoPointsMade: 0,
-                twoPointsAttempted: 0,
-                threePointsMade: 0,
-                threePointsAttempted: 0,
-                freeThrowsMade: 0,
-                freeThrowsAttempted: 0,
-                offensiveRebounds: 0,
-                defensiveRebounds: 0
-            }
-        }));
+        return playerNames.map(name => {
+            const normalizedName = normalizePlayerName(name);
+            return {
+                id: `${teamId}-${normalizedName}`,
+                name: normalizedName,
+                number: '', // 可以后续添加球衣号码
+                position: '', // 可以后续添加位置信息
+                team: teamId,
+                stats: {
+                    points: 0,
+                    rebounds: 0,
+                    assists: 0,
+                    steals: 0,
+                    blocks: 0,
+                    fouls: 0,
+                    turnovers: 0,
+                    playTime: 0,
+                    twoPointsMade: 0,
+                    twoPointsAttempted: 0,
+                    threePointsMade: 0,
+                    threePointsAttempted: 0,
+                    freeThrowsMade: 0,
+                    freeThrowsAttempted: 0,
+                    offensiveRebounds: 0,
+                    defensiveRebounds: 0
+                }
+            };
+        });
     };
 
     // 创建一个辅助函数来初始化统计数据
@@ -65,14 +68,31 @@ const App: React.FC = () => {
         defensiveRebounds: 0
     });
 
+    // 添加球员名字标准化函数
+    const normalizePlayerName = (name: string): string => {
+        const nameMap: { [key: string]: string } = {
+            'L.詹姆斯': 'L. 勒布朗-詹姆斯',
+            'L. 詹姆斯': 'L. 勒布朗-詹姆斯',
+            'B.詹姆斯': 'B. 勒布朗-詹姆斯',
+            'B. 詹姆斯': 'B. 勒布朗-詹姆斯',
+            '勒布朗-詹姆斯': 'L. 勒布朗-詹姆斯',
+            '贾克森海耶斯': '贾克森-海耶斯',
+            '亚历山大沃克': '尼基尔-亚历山大-沃克'
+        };
+        return nameMap[name] || name;
+    };
+
     // 修改初始化球队数据的函数
     const initializeTeams = (): { homeTeam: Team; awayTeam: Team } => {
+        console.log('\n=== Initializing Teams ===');
+        
+        // 使用与其他功能相同的球员名字格式
         const lakersPlayers = [
+            'L. 勒布朗-詹姆斯',
+            '戴维斯',
+            '八村塁',
             '里维斯',
             '拉塞尔',
-            'L. 勒布朗-詹姆斯',
-            '八村塁',
-            '戴维斯',
             '文森特',
             '克内克特',
             '贾克森-海耶斯',
@@ -92,6 +112,9 @@ const App: React.FC = () => {
             '乔-英格尔斯'
         ];
 
+        console.log('Lakers Players:', lakersPlayers);
+        console.log('Wolves Players:', wolvesPlayers);
+
         const homeTeam: Team = {
             id: 'home',
             name: '洛杉矶湖人',
@@ -108,6 +131,9 @@ const App: React.FC = () => {
             stats: createEmptyStats()
         };
 
+        console.log('Home Team Players:', homeTeam.players.map(p => p.name));
+        console.log('Away Team Players:', awayTeam.players.map(p => p.name));
+
         return { homeTeam, awayTeam };
     };
 
@@ -116,7 +142,7 @@ const App: React.FC = () => {
         let currentQuarter = 1;
         
         // 记录每个球员的状态
-        const playerStatus: { [key: string]: boolean } = {};  // true表示在场
+        const playerStatus: { [key: string]: { inGame: boolean, lastTimeUpdate: string } } = {};
         
         // 设置首发阵容
         const homePlayers = [
@@ -125,7 +151,7 @@ const App: React.FC = () => {
             '八村塁',
             '里维斯',
             '拉塞尔'
-        ];
+        ].map(normalizePlayerName);
 
         const awayPlayers = [
             '爱德华兹',
@@ -133,18 +159,7 @@ const App: React.FC = () => {
             '康利',
             '朱利叶斯-兰德尔',
             '杰登-麦克丹尼尔斯'
-        ];
-
-        // 初始化所有球员的状态和时间
-        const initializePlayer = (teamId: string, playerName: string, isStarter: boolean) => {
-            const key = `${teamId}-${playerName}`;
-            playTime[key] = 0;
-            playerStatus[key] = isStarter;
-        };
-
-        // 初始化首发球员
-        homePlayers.forEach(player => initializePlayer('home', player, true));
-        awayPlayers.forEach(player => initializePlayer('away', player, true));
+        ].map(normalizePlayerName);
 
         // 将时间字符串转换为秒数
         const timeToSeconds = (time: string): number => {
@@ -152,224 +167,260 @@ const App: React.FC = () => {
             return minutes * 60 + seconds;
         };
 
-        let lastEventTime = '12:00';
+        // 计算两个时间点之间的秒数差（考虑倒计时）
+        const calculateTimeDifferenceInSeconds = (startTime: string, endTime: string): number => {
+            return timeToSeconds(startTime) - timeToSeconds(endTime);
+        };
 
-        events.forEach((event, index) => {
-            // 计算当前事件与上一事件之间的时间差
-            const currentTimeInSeconds = timeToSeconds(event.time);
-            const lastTimeInSeconds = timeToSeconds(lastEventTime);
-            
-            // 如果是新的一节，重置时间
-            if (event.quarter !== currentQuarter) {
-                // 处理上一节剩余时间
-                const remainingSeconds = lastTimeInSeconds;
-                if (remainingSeconds > 0) {
-                    Object.entries(playerStatus).forEach(([playerKey, isOnCourt]) => {
-                        if (isOnCourt) {
-                            playTime[playerKey] += remainingSeconds;
-                        }
-                    });
+        // 更新所有在场球员的时间
+        const updatePlayersTime = (currentTime: string) => {
+            let updatedPlayers = new Set<string>();
+            Object.keys(playerStatus).forEach(key => {
+                if (playerStatus[key].inGame) {
+                    const timeDiffSeconds = calculateTimeDifferenceInSeconds(
+                        playerStatus[key].lastTimeUpdate,
+                        currentTime
+                    );
+                    if (timeDiffSeconds > 0) {
+                        const oldTime = playTime[key] || 0;
+                        playTime[key] = oldTime + timeDiffSeconds;
+                        playerStatus[key].lastTimeUpdate = currentTime;
+                        updatedPlayers.add(key);
+                        console.log(`${key}: +${Math.round(timeDiffSeconds)} (total: ${Math.round(playTime[key]/60)}min)`);
+                    }
                 }
+            });
+            return updatedPlayers;
+        };
+
+        // 初始化所有球员状态
+        const initializeAllPlayers = () => {
+            const allHomePlayers = [
+                'L. 勒布朗-詹姆斯',
+                '戴维斯',
+                '八村塁',
+                '里维斯',
+                '拉塞尔',
+                '文森特',
+                '克内克特',
+                '贾克森-海耶斯',
+                '马克斯·克里斯蒂',
+                'B. 勒布朗-詹姆斯'
+            ].map(normalizePlayerName);
+
+            const allAwayPlayers = [
+                '爱德华兹',
+                '戈贝尔',
+                '康利',
+                '朱利叶斯-兰德尔',
+                '杰登-麦克丹尼尔斯',
+                '迪温琴佐',
+                '拿斯列特',
+                '尼基尔-亚历山大-沃克',
+                '乔-英格尔斯'
+            ].map(normalizePlayerName);
+
+            // 初始化所有主队球员
+            allHomePlayers.forEach(player => {
+                const key = `home-${player}`;
+                const isStarter = homePlayers.includes(player);
+                playerStatus[key] = {
+                    inGame: isStarter,
+                    lastTimeUpdate: isStarter ? '12:00' : '00:00'
+                };
+                playTime[key] = 0;
+            });
+
+            // 初始化所有客队球员
+            allAwayPlayers.forEach(player => {
+                const key = `away-${player}`;
+                const isStarter = awayPlayers.includes(player);
+                playerStatus[key] = {
+                    inGame: isStarter,
+                    lastTimeUpdate: isStarter ? '12:00' : '00:00'
+                };
+                playTime[key] = 0;
+            });
+        };
+
+        // 初始化所有球员
+        initializeAllPlayers();
+
+        // 处理每个事件
+        events.forEach((event, index) => {
+            // 先更新所有在场球员的时间
+            updatePlayersTime(event.time);
+            
+            // 更新当前节数
+            if (event.type === GameEventType.QUARTER_START) {
                 currentQuarter = event.quarter;
-                lastEventTime = '12:00';
-                // 保持球员状态不变
+                // 在每节开始时更新所有在场球员的lastTimeUpdate
+                Object.keys(playerStatus).forEach(key => {
+                    if (playerStatus[key].inGame) {
+                        playerStatus[key].lastTimeUpdate = '12:00';
+                    }
+                });
                 return;
             }
 
-            // 计算时间差
-            const timeDiff = lastTimeInSeconds - currentTimeInSeconds;
-            if (timeDiff > 0) {
-                // 为所有在场球员添加时间
-                Object.entries(playerStatus).forEach(([playerKey, isOnCourt]) => {
-                    if (isOnCourt) {
-                        playTime[playerKey] += timeDiff;
-                    }
-                });
-            }
-
-            // 处理换人事件
-            if (event.description?.includes('换人：')) {
-                const subMatch = event.description.match(/换人：\s*([^替]+?)\s*替换\s*([^替]+)$/);
+            if (event.type === GameEventType.SUBSTITUTION) {
+                const subMatch = event.description?.match(/换人：\s*([^替]+?)\s*替换\s*([^替]+)$/);
                 if (subMatch) {
                     const [_, inPlayer, outPlayer] = subMatch;
-                    const inPlayerKey = `${event.team}-${inPlayer.trim()}`;
-                    const outPlayerKey = `${event.team}-${outPlayer.trim()}`;
+                    const inPlayerKey = `${event.team}-${normalizePlayerName(inPlayer.trim())}`;
+                    const outPlayerKey = `${event.team}-${normalizePlayerName(outPlayer.trim())}`;
 
                     // 更新球员状态
-                    playerStatus[outPlayerKey] = false;
-                    playerStatus[inPlayerKey] = true;
-
-                    console.log('Substitution:', {
-                        time: event.time,
-                        quarter: event.quarter,
-                        in: inPlayerKey,
-                        out: outPlayerKey
-                    });
+                    playerStatus[outPlayerKey] = { inGame: false, lastTimeUpdate: event.time };
+                    playerStatus[inPlayerKey] = { inGame: true, lastTimeUpdate: event.time };
                 }
             }
-
-            lastEventTime = event.time;
         });
 
-        // 处理最后一节剩余时间
-        const finalTimeInSeconds = timeToSeconds(lastEventTime);
-        if (finalTimeInSeconds > 0) {
-            Object.entries(playerStatus).forEach(([playerKey, isOnCourt]) => {
-                if (isOnCourt) {
-                    playTime[playerKey] += finalTimeInSeconds;
-                }
-            });
-        }
-
-        // 将秒数转换为分钟
-        Object.keys(playTime).forEach(key => {
-            playTime[key] = Math.round(playTime[key] / 60);
+        // 将秒数转换为分钟并返回
+        const minutesPlayTime: { [key: string]: number } = {};
+        Object.entries(playTime).forEach(([key, seconds]) => {
+            minutesPlayTime[key] = Math.round(seconds / 60);
         });
 
-        return playTime;
+        return minutesPlayTime;
     };
 
     const processEvent = (state: GameState, event: GameEvent) => {
-        const team = event.team === 'home' ? state.homeTeam : state.awayTeam;
-        const player = team.players.find(p => p.name === event.player);
+        // 获取当前事件的前一个事件的时间
+        const eventIndex = state.events.indexOf(event);
+        const prevEvent = eventIndex > 0 ? state.events[eventIndex - 1] : null;
+        const prevTime = prevEvent ? prevEvent.time : '12:00';
 
-        if (!player) {
-            console.warn(`Player not found: ${event.player}`);
-            return;
-        }
+        // 计算当前事件和前一个事件之间的时间（秒）
+        const timeToSeconds = (time: string): number => {
+            const [minutes, seconds] = time.split(':').map(Number);
+            return minutes * 60 + seconds;
+        };
 
-        // 添加调试日志
-        console.log('Processing event:', {
-            player: player.name,
-            type: event.type,
-            points: event.points,
-            description: event.description
-        });
+        const timeDiffSeconds = timeToSeconds(prevTime) - timeToSeconds(event.time);
 
-        // 根据事件类型更新统计数据
-        switch (event.type) {
-            case GameEventType.FREE_THROW_MADE:
-                console.log('Before free throw:', {
-                    playerPoints: player.stats.points,
-                    teamPoints: team.stats.points,
-                    eventPoints: event.points
-                });
+        // 如果是换人事件，更新球员状态
+        if (event.type === GameEventType.SUBSTITUTION) {
+            const subMatch = event.description?.match(/换人：\s*([^替]+?)\s*替换\s*([^替]+)$/);
+            if (subMatch) {
+                const [_, inPlayer, outPlayer] = subMatch;
+                const team = event.team === 'home' ? state.homeTeam : state.awayTeam;
                 
-                player.stats.points += event.points;
-                player.stats.freeThrowsMade += 1;
-                player.stats.freeThrowsAttempted += 1;
-                team.stats.freeThrowsMade += 1;
-                team.stats.freeThrowsAttempted += 1;
-                team.stats.points += event.points;
-                
-                console.log('After free throw:', {
-                    playerPoints: player.stats.points,
-                    teamPoints: team.stats.points
-                });
-                break;
+                // 找到换入和换出的球员
+                const inPlayerObj = team.players.find(p => p.name === inPlayer.trim());
+                const outPlayerObj = team.players.find(p => p.name === outPlayer.trim());
 
-            case GameEventType.TWO_POINTS_MADE:
-                player.stats.points = event.points;
-                player.stats.twoPointsMade += 1;
-                player.stats.twoPointsAttempted += 1;
-                team.stats.twoPointsMade += 1;
-                team.stats.twoPointsAttempted += 1;
-                team.stats.points = team.players.reduce((sum, p) => sum + p.stats.points, 0);
-                break;
-
-            case GameEventType.THREE_POINTS_MADE:
-                player.stats.points = event.points;
-                player.stats.threePointsMade += 1;
-                player.stats.threePointsAttempted += 1;
-                team.stats.threePointsMade += 1;
-                team.stats.threePointsAttempted += 1;
-                team.stats.points = team.players.reduce((sum, p) => sum + p.stats.points, 0);
-                break;
-
-            case GameEventType.TWO_POINTS_MISSED:
-                player.stats.twoPointsAttempted += 1;
-                team.stats.twoPointsAttempted += 1;
-                break;
-
-            case GameEventType.THREE_POINTS_MISSED:
-                player.stats.threePointsAttempted += 1;
-                team.stats.threePointsAttempted += 1;
-                break;
-
-            case GameEventType.FREE_THROW_MISSED:
-                player.stats.freeThrowsAttempted += 1;
-                team.stats.freeThrowsAttempted += 1;
-                break;
-
-            case GameEventType.REBOUND:
-                // 从描述中提取篮板数据
-                const reboundMatch = event.description?.match(/\(进攻篮板:(\d+)\s*防守篮板:(\d+)\)/);
-                if (reboundMatch) {
-                    // 直接使用括号中的数字作为总数
-                    const offensiveTotal = parseInt(reboundMatch[1]);
-                    const defensiveTotal = parseInt(reboundMatch[2]);
-                    
-                    // 更新球员统计
-                    player.stats.offensiveRebounds = offensiveTotal;
-                    player.stats.defensiveRebounds = defensiveTotal;
-                    player.stats.rebounds = offensiveTotal + defensiveTotal;
-                    
-                    // 更新球队统计
-                    team.stats.offensiveRebounds = team.players.reduce((sum, p) => sum + p.stats.offensiveRebounds, 0);
-                    team.stats.defensiveRebounds = team.players.reduce((sum, p) => sum + p.stats.defensiveRebounds, 0);
-                    team.stats.rebounds = team.stats.offensiveRebounds + team.stats.defensiveRebounds;
+                if (inPlayerObj && outPlayerObj) {
+                    // 更新球员状态
+                    outPlayerObj.stats.playTime += Math.round(timeDiffSeconds / 60);
+                    inPlayerObj.stats.playTime = inPlayerObj.stats.playTime || 0;
                 }
-                break;
-
-            case GameEventType.ASSIST:
-                player.stats.assists += 1;
-                team.stats.assists += 1;
-                break;
-
-            case GameEventType.BLOCK:
-                player.stats.blocks += 1;
-                team.stats.blocks += 1;
-                break;
-
-            case GameEventType.STEAL:
-                player.stats.steals += 1;
-                team.stats.steals += 1;
-                break;
-
-            case GameEventType.FOUL:
-                player.stats.fouls += 1;
-                team.stats.fouls += 1;
-                break;
-
-            case GameEventType.TURNOVER:
-                player.stats.turnovers += 1;
-                team.stats.turnovers += 1;
-                break;
+            }
         }
 
-        // 更新上场时间
-        const playTimes = calculatePlayTime(state.events);
-        Object.entries(playTimes).forEach(([key, time]) => {
-            const [teamId, playerName] = key.split('-');
-            const team = teamId === 'home' ? state.homeTeam : state.awayTeam;
-            const player = team.players.find(p => p.name === playerName);
-            if (player) {
-                // 将秒数转换为分钟，并四舍五入到整数
-                player.stats.playTime = Math.round(time / 60);
+        // 如果不是换人事件，处理其他统计数据
+        if (event.type !== GameEventType.SUBSTITUTION) {
+            const team = event.team === 'home' ? state.homeTeam : state.awayTeam;
+            const player = team.players.find(p => p.name === event.player);
+
+            if (!player) {
+                return;
             }
-        });
+
+            // 更新球员上场时间
+            player.stats.playTime += Math.round(timeDiffSeconds / 60);
+
+            // 根据事件类型更新其他统计数据
+            switch (event.type) {
+                case GameEventType.FREE_THROW_MADE:
+                    player.stats.points += event.points;
+                    player.stats.freeThrowsMade += 1;
+                    player.stats.freeThrowsAttempted += 1;
+                    team.stats.freeThrowsMade += 1;
+                    team.stats.freeThrowsAttempted += 1;
+                    team.stats.points += event.points;
+                    break;
+
+                case GameEventType.TWO_POINTS_MADE:
+                    player.stats.points = event.points;
+                    player.stats.twoPointsMade += 1;
+                    player.stats.twoPointsAttempted += 1;
+                    team.stats.twoPointsMade += 1;
+                    team.stats.twoPointsAttempted += 1;
+                    team.stats.points = team.players.reduce((sum, p) => sum + p.stats.points, 0);
+                    break;
+
+                case GameEventType.THREE_POINTS_MADE:
+                    player.stats.points = event.points;
+                    player.stats.threePointsMade += 1;
+                    player.stats.threePointsAttempted += 1;
+                    team.stats.threePointsMade += 1;
+                    team.stats.threePointsAttempted += 1;
+                    team.stats.points = team.players.reduce((sum, p) => sum + p.stats.points, 0);
+                    break;
+
+                case GameEventType.TWO_POINTS_MISSED:
+                    player.stats.twoPointsAttempted += 1;
+                    team.stats.twoPointsAttempted += 1;
+                    break;
+
+                case GameEventType.THREE_POINTS_MISSED:
+                    player.stats.threePointsAttempted += 1;
+                    team.stats.threePointsAttempted += 1;
+                    break;
+
+                case GameEventType.FREE_THROW_MISSED:
+                    player.stats.freeThrowsAttempted += 1;
+                    team.stats.freeThrowsAttempted += 1;
+                    break;
+
+                case GameEventType.REBOUND:
+                    const reboundMatch = event.description?.match(/\(进攻篮板:(\d+)\s*防守篮板:(\d+)\)/);
+                    if (reboundMatch) {
+                        const offensiveTotal = parseInt(reboundMatch[1]);
+                        const defensiveTotal = parseInt(reboundMatch[2]);
+                        
+                        player.stats.offensiveRebounds = offensiveTotal;
+                        player.stats.defensiveRebounds = defensiveTotal;
+                        player.stats.rebounds = offensiveTotal + defensiveTotal;
+                        
+                        team.stats.offensiveRebounds = team.players.reduce((sum, p) => sum + p.stats.offensiveRebounds, 0);
+                        team.stats.defensiveRebounds = team.players.reduce((sum, p) => sum + p.stats.defensiveRebounds, 0);
+                        team.stats.rebounds = team.stats.offensiveRebounds + team.stats.defensiveRebounds;
+                    }
+                    break;
+
+                case GameEventType.ASSIST:
+                    player.stats.assists += 1;
+                    team.stats.assists += 1;
+                    break;
+
+                case GameEventType.BLOCK:
+                    player.stats.blocks += 1;
+                    team.stats.blocks += 1;
+                    break;
+
+                case GameEventType.STEAL:
+                    player.stats.steals += 1;
+                    team.stats.steals += 1;
+                    break;
+
+                case GameEventType.FOUL:
+                    player.stats.fouls += 1;
+                    team.stats.fouls += 1;
+                    break;
+
+                case GameEventType.TURNOVER:
+                    player.stats.turnovers += 1;
+                    team.stats.turnovers += 1;
+                    break;
+            }
+        }
 
         // 更新比赛时间和节数
         state.time = event.time;
         state.quarter = event.quarter;
-
-        // 添加调试日志
-        console.log(`Event processed: ${event.type}`, {
-            player: player.name,
-            playerStats: player.stats,
-            teamStats: team.stats,
-            event: event
-        });
     };
 
     const loadGameData = async () => {
@@ -497,15 +548,23 @@ const App: React.FC = () => {
             processEvent(newState, gameState.events[i]);
         }
 
+        // 更新最终的上场时间
+        const finalPlayTimes = calculatePlayTime(gameState.events.slice(0, index + 1));
+        
+        // 更新每个球员的上场时间
+        Object.entries(finalPlayTimes).forEach(([key, time]) => {
+            const [teamId, ...playerNameParts] = key.split('-');
+            const playerName = playerNameParts.join('-'); // 处理带连字符的名字
+            const team = teamId === 'home' ? newState.homeTeam : newState.awayTeam;
+            const player = team.players.find(p => p.name === playerName);
+            
+            if (player) {
+                player.stats.playTime = time;
+            }
+        });
+
         setGameState(newState);
         setCurrentEventIndex(index);
-
-        // 记录日志用于调试
-        console.log('State after seek:', {
-            index,
-            homeTeamStats: newState.homeTeam.stats,
-            awayTeamStats: newState.awayTeam.stats
-        });
     };
 
     // 监听当前事件索引变化
@@ -515,6 +574,19 @@ const App: React.FC = () => {
         const currentEvent = gameState.events[currentEventIndex];
         const newState = { ...gameState };
         processEvent(newState, currentEvent);
+
+        // 计算并更新上场时间
+        const finalPlayTimes = calculatePlayTime(gameState.events.slice(0, currentEventIndex + 1));
+        Object.entries(finalPlayTimes).forEach(([key, time]) => {
+            const [teamId, ...playerNameParts] = key.split('-');
+            const playerName = playerNameParts.join('-');
+            const team = teamId === 'home' ? newState.homeTeam : newState.awayTeam;
+            const player = team.players.find(p => p.name === playerName);
+            if (player) {
+                player.stats.playTime = time;
+            }
+        });
+
         setGameState(newState);
     }, [currentEventIndex]);
 

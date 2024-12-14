@@ -1,6 +1,12 @@
 import * as PIXI from 'pixi.js';
 import { GameEvent, GameState, GameEventType } from '../../types';
-import gsap from 'gsap';
+import { gsap } from 'gsap';
+import { PixiPlugin } from 'gsap/PixiPlugin';
+
+// Register GSAP plugins
+gsap.registerPlugin(PixiPlugin);
+// Initialize PixiPlugin
+PixiPlugin.registerPIXI(PIXI);
 
 export class GameRenderer {
     private app: PIXI.Application;
@@ -150,19 +156,32 @@ export class GameRenderer {
         const startX = isHome ? 200 : 600;
         const endX = isHome ? 750 : 50;
 
-        gsap.to(this.ball, {
+        // Kill any existing animations
+        gsap.killTweensOf(this.ball);
+
+        // Create a timeline for the shot animation
+        const tl = gsap.timeline();
+        
+        // Arc motion for the ball
+        tl.to(this.ball, {
             duration: 1,
             x: endX,
             y: 200,
             ease: "power2.out",
             onComplete: () => {
-                // 重置球的位置
-                this.ball.position.set(400, 200);
+                // Reset ball position
+                gsap.set(this.ball, {
+                    x: 400,
+                    y: 200
+                });
             }
         });
     }
 
     private animateRebound(event: GameEvent) {
+        // Kill any existing animations
+        gsap.killTweensOf(this.ball);
+
         gsap.to(this.ball, {
             duration: 0.5,
             y: "-=50",
@@ -173,6 +192,9 @@ export class GameRenderer {
     }
 
     private animateBlock(event: GameEvent) {
+        // Kill any existing animations
+        gsap.killTweensOf(this.ball);
+
         gsap.to(this.ball, {
             duration: 0.3,
             y: "+=30",
@@ -199,6 +221,8 @@ export class GameRenderer {
     }
 
     public destroy() {
+        // Kill all animations before destroying
+        gsap.killTweensOf(this.ball);
         this.app.destroy(true);
     }
 } 

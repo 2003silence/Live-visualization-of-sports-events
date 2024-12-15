@@ -8,6 +8,22 @@ export class GameRenderer {
     private ball: PIXI.Sprite;
     private players: Map<string, PIXI.Container>;
     private animations: Map<GameEventType, (event: GameEvent) => void>;
+    private readonly INITIAL_POSITIONS = {
+        home: [
+            {x: 150, y: 150},
+            {x: 150, y: 300},
+            {x: 250, y: 225},
+            {x: 300, y: 150},
+            {x: 300, y: 300}
+        ],
+        away: [
+            {x: 650, y: 150},
+            {x: 650, y: 300},
+            {x: 550, y: 225},
+            {x: 500, y: 150},
+            {x: 500, y: 300}
+        ]
+    };
 
     constructor(container: HTMLDivElement) {
         // 创建PIXI应用
@@ -118,16 +134,18 @@ export class GameRenderer {
     private createPlayer(team: string, number: string): PIXI.Container {
         const player = new PIXI.Container();
 
-        // 球员图标
+        // 球员图标 - 增大尺寸并添加边框
         const icon = new PIXI.Graphics();
+        icon.lineStyle(2, 0xFFFFFF); // 添加白色边框
         icon.beginFill(team === 'home' ? 0xFF0000 : 0x0000FF);
-        icon.drawCircle(0, 0, 10);
+        icon.drawCircle(0, 0, 15); // 增大半径到15
         icon.endFill();
 
-        // 球员号码
+        // 球员号码 - 调整字体大小
         const text = new PIXI.Text(number, {
-            fontSize: 10,
-            fill: 0xFFFFFF
+            fontSize: 12,
+            fill: 0xFFFFFF,
+            fontWeight: 'bold'
         });
         text.anchor.set(0.5);
 
@@ -182,7 +200,34 @@ export class GameRenderer {
     }
 
     public updateGameState(state: GameState) {
-        // 更新球场状态
+        // 清除现有球员
+        this.players.forEach(player => {
+            this.court.removeChild(player);
+        });
+        this.players.clear();
+
+        // 初始化主队球员
+        for (let i = 0; i < 5; i++) {
+            const player = this.createPlayer('home', String(i + 1));
+            player.position.set(
+                this.INITIAL_POSITIONS.home[i].x,
+                this.INITIAL_POSITIONS.home[i].y
+            );
+            this.players.set(`home_${i}`, player);
+            this.court.addChild(player);
+        }
+
+        // 初始化客队球员
+        for (let i = 0; i < 5; i++) {
+            const player = this.createPlayer('away', String(i + 1));
+            player.position.set(
+                this.INITIAL_POSITIONS.away[i].x,
+                this.INITIAL_POSITIONS.away[i].y
+            );
+            this.players.set(`away_${i}`, player);
+            this.court.addChild(player);
+        }
+
         // 可以根据需要添加更多状态更新逻辑
     }
 

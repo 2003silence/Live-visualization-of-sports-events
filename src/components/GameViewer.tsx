@@ -24,5 +24,12 @@ export const GameViewer: React.FC<GameViewerProps> = ({ gameState, currentEventI
         }
     }, [gameState]);
 
+    useEffect(() => {
+        if (rendererRef.current && gameState && currentEventIndex >= 0 && currentEventIndex < gameState.events.length) {
+            const currentEvent = gameState.events[currentEventIndex];
+            rendererRef.current.playEvent(currentEvent);
+        }
+    }, [currentEventIndex, gameState]);
+
     return <div ref={containerRef} className="game-viewer" />;
 }; 

@@ -144,7 +144,7 @@ export class GameRenderer {
 
         // 球员图标 - 增大尺寸并添加边框
         const icon = new PIXI.Graphics();
-        icon.lineStyle(2, 0xFFFFFF); // 添��白色边框
+        icon.lineStyle(2, 0xFFFFFF); // 添加白色边框
         icon.beginFill(team === 'home' ? 0xFF0000 : 0x0000FF);
         icon.drawCircle(0, 0, 15); // 增大半径到15
         icon.endFill();
@@ -173,37 +173,280 @@ export class GameRenderer {
 
     private animateShot(event: GameEvent) {
         const isHome = event.team === 'home';
-        const startX = isHome ? 200 : 600;
-        const endX = isHome ? 750 : 50;
+        const startPos = this.getStartPosition(event);
+        const endPos = this.getBasketPosition(isHome);
+        const controlPoint = this.getControlPoint(startPos, endPos, event.type);
 
-        gsap.to(this.ball, {
-            duration: 1,
-            x: endX,
-            y: 200,
-            ease: "power2.out",
-            onComplete: () => {
-                // 重置���的位置
-                this.ball.position.set(400, 200);
-            }
+        // 获取双方的1号球员
+        const shooter = this.players.get(`${event.team}_0`);
+        const defender = this.players.get(`${isHome ? 'away' : 'home'}_0`);
+        
+        if (!shooter || !defender) return;
+
+        const tl = gsap.timeline();
+
+        // 球员移动到起始位置
+        tl.to([shooter.position, defender.position], {
+            duration: 0.3,
+            x: startPos.x,
+            y: startPos.y,
+            ease: "power1.inOut"
+        }, 0);
+
+        // 球移动到起始位置
+        tl.to(this.ball, {
+            duration: 0.3,
+            x: startPos.x,
+            y: startPos.y,
+            ease: "power1.inOut"
+        }, 0);
+
+        // 投篮动画
+        tl.to(this.ball, {
+            duration: 1.2,
+            motionPath: {
+                path: [startPos, controlPoint, endPos],
+                curviness: 1.5,
+                type: "soft"
+            },
+            ease: "power1.inOut"
+        });
+
+        // 球员跟随移动
+        tl.to(shooter.position, {
+            duration: 1.2,
+            x: startPos.x + (isHome ? 30 : -30),
+            y: startPos.y,
+            ease: "power1.inOut"
+        }, "-=1.2");
+
+        tl.to(defender.position, {
+            duration: 1.2,
+            x: startPos.x + (isHome ? 20 : -20),
+            y: startPos.y,
+            ease: "power1.inOut"
+        }, "-=1.2");
+
+        // 所有元素回到初始位置
+        tl.to([this.ball, shooter.position, defender.position], {
+            duration: 0.3,
+            x: (target: any) => {
+                if (target === this.ball) return 400;
+                const pos = target as PIXI.ObservablePoint;
+                if (pos === shooter.position) {
+                    return this.INITIAL_POSITIONS[isHome ? 'home' : 'away'][0].x;
+                }
+                return this.INITIAL_POSITIONS[isHome ? 'away' : 'home'][0].x;
+            },
+            y: (target: any) => {
+                if (target === this.ball) return 225;
+                const pos = target as PIXI.ObservablePoint;
+                if (pos === shooter.position) {
+                    return this.INITIAL_POSITIONS[isHome ? 'home' : 'away'][0].y;
+                }
+                return this.INITIAL_POSITIONS[isHome ? 'away' : 'home'][0].y;
+            },
+            ease: "power1.inOut",
+            delay: 0.3
         });
     }
 
+    private getStartPosition(event: GameEvent): {x: number, y: number} {
+        const isHome = event.team === 'home';
+        
+        switch(event.type) {
+            case GameEventType.THREE_POINTS_MADE:
+            case GameEventType.THREE_POINTS_MISSED:
+                // 三分球起始位置
+                return {
+                    x: isHome ? 200 : 600,
+                    y: isHome ? 150 : 300
+                };
+                
+            case GameEventType.TWO_POINTS_MADE:
+            case GameEventType.TWO_POINTS_MISSED:
+                // 两分球起始位置
+                return {
+                    x: isHome ? 300 : 500,
+                    y: 225
+                };
+                
+            case GameEventType.FREE_THROW_MADE:
+            case GameEventType.FREE_THROW_MISSED:
+                // 罚球起始位置
+                return {
+                    x: isHome ? 200 : 600,
+                    y: 225
+                };
+                
+            default:
+                return {
+                    x: 400,
+                    y: 225
+                };
+        }
+    }
+
+    private getBasketPosition(isHome: boolean): {x: number, y: number} {
+        return {
+            x: isHome ? 740 : 60, // 篮筐x坐标
+            y: 225 // 篮筐y坐标
+        };
+    }
+
+    private getControlPoint(start: {x: number, y: number}, end: {x: number, y: number}, eventType: GameEventType): {x: number, y: number} {
+        const midX = (start.x + end.x) / 2;
+        let arcHeight: number;
+        
+        switch(eventType) {
+            case GameEventType.THREE_POINTS_MADE:
+            case GameEventType.THREE_POINTS_MISSED:
+                arcHeight = 120; // 增加三分球高度
+                break;
+                
+            case GameEventType.TWO_POINTS_MADE:
+            case GameEventType.TWO_POINTS_MISSED:
+                arcHeight = 90; // 增加两分球高度
+                break;
+                
+            case GameEventType.FREE_THROW_MADE:
+            case GameEventType.FREE_THROW_MISSED:
+                arcHeight = 70; // 增加罚球高度
+                break;
+                
+            default:
+                arcHeight = 80;
+        }
+        
+        return {
+            x: midX,
+            y: Math.min(start.y, end.y) - arcHeight
+        };
+    }
+
     private animateRebound(event: GameEvent) {
-        gsap.to(this.ball, {
-            duration: 0.5,
-            y: "-=50",
-            yoyo: true,
-            repeat: 1,
+        const isHome = event.team === 'home';
+        const basketPos = this.getBasketPosition(!isHome);
+        const rebounder = this.players.get(`${event.team}_0`);
+        const opponent = this.players.get(`${isHome ? 'away' : 'home'}_0`);
+        
+        if (!rebounder || !opponent) return;
+
+        const tl = gsap.timeline();
+
+        // 所有元素移动到篮筐位置
+        tl.to([this.ball, rebounder.position, opponent.position], {
+            duration: 0.3,
+            x: basketPos.x + (isHome ? -20 : 20),
+            y: basketPos.y,
             ease: "power1.inOut"
+        });
+
+        // 篮板球动作
+        tl.to(this.ball, {
+            duration: 0.4,
+            y: basketPos.y - 30,
+            x: isHome ? basketPos.x - 40 : basketPos.x + 40,
+            ease: "power2.out"
+        }).to(this.ball, {
+            duration: 0.4,
+            y: basketPos.y + 10,
+            ease: "bounce.out"
+        });
+
+        // 球员争抢动作
+        tl.to([rebounder.position, opponent.position], {
+            duration: 0.8,
+            y: (_target: any) => basketPos.y + (Math.random() * 20 - 10),
+            x: (_target: any) => {
+                const baseX = isHome ? basketPos.x - 40 : basketPos.x + 40;
+                return baseX + (Math.random() * 20 - 10);
+            },
+            ease: "power1.inOut"
+        }, "-=0.8");
+
+        // 所有元素回到初始位置
+        tl.to([this.ball, rebounder.position, opponent.position], {
+            duration: 0.3,
+            x: (target: any) => {
+                if (target === this.ball) return 400;
+                const pos = target as PIXI.ObservablePoint;
+                if (pos === rebounder.position) {
+                    return this.INITIAL_POSITIONS[isHome ? 'home' : 'away'][0].x;
+                }
+                return this.INITIAL_POSITIONS[isHome ? 'away' : 'home'][0].x;
+            },
+            y: (target: any) => {
+                if (target === this.ball) return 225;
+                const pos = target as PIXI.ObservablePoint;
+                if (pos === rebounder.position) {
+                    return this.INITIAL_POSITIONS[isHome ? 'home' : 'away'][0].y;
+                }
+                return this.INITIAL_POSITIONS[isHome ? 'away' : 'home'][0].y;
+            },
+            ease: "power1.inOut",
+            delay: 0.2
         });
     }
 
     private animateBlock(event: GameEvent) {
-        gsap.to(this.ball, {
+        const isHome = event.team === 'home';
+        const startPos = this.getStartPosition({...event, team: isHome ? 'away' : 'home'});
+        const blocker = this.players.get(`${event.team}_0`);
+        const shooter = this.players.get(`${isHome ? 'away' : 'home'}_0`);
+        
+        if (!blocker || !shooter) return;
+
+        const tl = gsap.timeline();
+
+        // 所有元素���动到起始位置
+        tl.to([this.ball, blocker.position, shooter.position], {
             duration: 0.3,
-            y: "+=30",
-            x: event.team === 'home' ? "-=50" : "+=50",
-            ease: "power3.out"
+            x: startPos.x,
+            y: startPos.y,
+            ease: "power1.inOut"
+        });
+
+        // 盖帽动作
+        tl.to([this.ball, blocker.position], {
+            duration: 0.3,
+            y: startPos.y - 40,
+            x: (target: any) => {
+                const baseX = isHome ? startPos.x - 30 : startPos.x + 30;
+                return target === this.ball ? baseX : baseX + (isHome ? -20 : 20);
+            },
+            ease: "power2.out"
+        }).to([this.ball, blocker.position], {
+            duration: 0.4,
+            y: startPos.y + 30,
+            x: (target: any) => {
+                const baseX = isHome ? startPos.x - 60 : startPos.x + 60;
+                return target === this.ball ? baseX : baseX + (isHome ? -20 : 20);
+            },
+            ease: "power3.in"
+        });
+
+        // 所有元素回到初始位置
+        tl.to([this.ball, blocker.position, shooter.position], {
+            duration: 0.3,
+            x: (target: any) => {
+                if (target === this.ball) return 400;
+                const pos = target as PIXI.ObservablePoint;
+                if (pos === blocker.position) {
+                    return this.INITIAL_POSITIONS[isHome ? 'home' : 'away'][0].x;
+                }
+                return this.INITIAL_POSITIONS[isHome ? 'away' : 'home'][0].x;
+            },
+            y: (target: any) => {
+                if (target === this.ball) return 225;
+                const pos = target as PIXI.ObservablePoint;
+                if (pos === blocker.position) {
+                    return this.INITIAL_POSITIONS[isHome ? 'home' : 'away'][0].y;
+                }
+                return this.INITIAL_POSITIONS[isHome ? 'away' : 'home'][0].y;
+            },
+            ease: "power1.inOut",
+            delay: 0.2
         });
     }
 
@@ -235,8 +478,6 @@ export class GameRenderer {
             this.players.set(`away_${i}`, player);
             this.court.addChild(player);
         }
-
-        // 可以根据需要添加更多状态更新逻辑
     }
 
     public playEvent(event: GameEvent) {
@@ -291,7 +532,7 @@ export class GameRenderer {
         this.gameStartText.position.set(400, 225);
         this.gameStartText.alpha = 0;
         
-        // 将文本添加到舞台最顶层，确保在遮罩之上
+        // 将文本添加到舞台最顶���，确保在遮罩之上
         this.app.stage.addChild(this.gameStartText);
     }
 

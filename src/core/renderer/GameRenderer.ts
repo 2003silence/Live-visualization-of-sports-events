@@ -24,6 +24,8 @@ export class GameRenderer {
             {x: 500, y: 300}
         ]
     };
+    private gameStartText: PIXI.Text | null = null;
+    private overlay: PIXI.Graphics | null = null;
 
     constructor(container: HTMLDivElement) {
         // 创建PIXI应用
@@ -50,6 +52,12 @@ export class GameRenderer {
         // 初始化动画处理器
         this.animations = new Map();
         this.initializeAnimations();
+        
+        // 初始化遮罩层
+        this.initOverlay();
+        
+        // 初始化比赛开始文本
+        this.initGameStartText();
     }
 
     private drawCourt() {
@@ -136,7 +144,7 @@ export class GameRenderer {
 
         // 球员图标 - 增大尺寸并添加边框
         const icon = new PIXI.Graphics();
-        icon.lineStyle(2, 0xFFFFFF); // 添加白色边框
+        icon.lineStyle(2, 0xFFFFFF); // 添��白色边框
         icon.beginFill(team === 'home' ? 0xFF0000 : 0x0000FF);
         icon.drawCircle(0, 0, 15); // 增大半径到15
         icon.endFill();
@@ -174,7 +182,7 @@ export class GameRenderer {
             y: 200,
             ease: "power2.out",
             onComplete: () => {
-                // 重置球的位置
+                // 重置���的位置
                 this.ball.position.set(400, 200);
             }
         });
@@ -232,6 +240,11 @@ export class GameRenderer {
     }
 
     public playEvent(event: GameEvent) {
+        // 如果是第一个事件，显示比赛开始文本
+        if (event.quarter === 1 && event.time === '12:00') {
+            this.showGameStart();
+        }
+        
         const animation = this.animations.get(event.type);
         if (animation) {
             animation(event);
@@ -245,5 +258,75 @@ export class GameRenderer {
 
     public destroy() {
         this.app.destroy(true);
+    }
+
+    private initOverlay() {
+        // 创建全屏遮罩
+        this.overlay = new PIXI.Graphics();
+        this.overlay.beginFill(0x000000, 0.5);  // 黑色半透明
+        this.overlay.drawRect(0, 0, 800, 450);  // 覆盖整个画布
+        this.overlay.endFill();
+        this.overlay.alpha = 0;  // 初始透明
+        
+        // 将遮罩添加到舞台最顶层
+        this.app.stage.addChild(this.overlay);
+    }
+
+    private initGameStartText() {
+        this.gameStartText = new PIXI.Text('比赛开始', {
+            fontFamily: '"华文行楷", "STXingkai", "楷体", "KaiTi", Arial',
+            fontSize: 72,
+            fill: ['#FF0000', '#FF4444'],
+            fontWeight: 'normal',
+            dropShadow: true,
+            dropShadowColor: 0x000000,
+            dropShadowBlur: 6,
+            dropShadowDistance: 3,
+            stroke: '#880000',
+            strokeThickness: 2,
+            letterSpacing: 4
+        });
+        
+        this.gameStartText.anchor.set(0.5);
+        this.gameStartText.position.set(400, 225);
+        this.gameStartText.alpha = 0;
+        
+        // 将文本添加到舞台最顶层，确保在遮罩之上
+        this.app.stage.addChild(this.gameStartText);
+    }
+
+    public showGameStart() {
+        if (!this.gameStartText || !this.overlay) return;
+        
+        // 重置状态
+        this.gameStartText.alpha = 0;
+        this.gameStartText.scale.set(1);
+        this.overlay.alpha = 0;
+        
+        // 创建动画效果
+        const tl = gsap.timeline();
+        
+        // 首先让背景变暗
+        tl.to(this.overlay, {
+            alpha: 0.5,
+            duration: 0.3,
+            ease: "power2.out"
+        });
+        
+        // 然后显示文字
+        tl.to(this.gameStartText, {
+            alpha: 1,
+            duration: 0.5,
+            ease: "power2.out"
+        }, "-=0.2");  // 略微提前开始文字动画
+        
+        // 停留一会后开始淡出
+        tl.to([this.gameStartText, this.overlay], {
+            alpha: 0,
+            scale: this.gameStartText.scale.x * 1.5,
+            duration: 1,
+            ease: "power2.in",
+            delay: 1
+        });
     }
 } 

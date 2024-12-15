@@ -14,6 +14,7 @@ export const GameViewer: React.FC<GameViewerProps> = ({ gameState, currentEventI
     useEffect(() => {
         if (containerRef.current && !rendererRef.current) {
             rendererRef.current = new GameRenderer(containerRef.current);
+            (containerRef.current as any).__pixi = rendererRef.current;
         }
     }, []);
 

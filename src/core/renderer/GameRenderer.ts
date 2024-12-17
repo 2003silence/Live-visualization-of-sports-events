@@ -414,55 +414,130 @@ export class GameRenderer {
     private animateSteal(event: GameEvent) {
         const isHome = event.team === 'home';
         
-        this.showActionText('抢断！', '#32CD32');
-        
         gsap.killTweensOf(this.ball);
+        const player = this.getRandomPlayer(event.team);
+        const opponent = this.getRandomOpponentPlayer(event.team);
         
-        // 移动球员到球的位置
-        this.movePlayerWithBall(this.ball.x, this.ball.y, event.team);
+        if (player) {
+            gsap.killTweensOf(player);
+        }
+        if (opponent) {
+            gsap.killTweensOf(opponent);
+        }
         
         const tl = gsap.timeline();
         
-        tl.to([this.ball, this.players.get(`${event.team}_0`)], {
-            duration: 0.2,
-            x: isHome ? "-=30" : "+=30",
-            ease: "power1.in"
-        })
-        .to([this.ball, this.players.get(`${event.team}_0`)], {
-            duration: 0.4,
-            x: isHome ? "-=100" : "+=100",
-            y: isHome ? "-=50" : "+=50",
-            ease: "power2.out"
-        });
+        if (player && opponent) {
+            // 第一步：对方球员移动到球附近的随机位置准备抢断
+            tl.to(opponent, {
+                duration: 0.3,
+                ...this.getRandomPositionAroundBall(25, isHome),
+                ease: "power2.out"
+            });
+
+            // 第二步：持球球员移动，对手跟随
+            tl.to([this.ball, player], {
+                duration: 0.4,
+                x: isHome ? "+=30" : "-=30",
+                ease: "power1.inOut"
+            })
+            .to(opponent, {
+                duration: 0.4,
+                ...this.getRandomPositionAroundBall(20, isHome), // 更近的距离
+                ease: "power1.inOut"
+            }, "-=0.4");
+
+            // 第三步：抢断瞬间
+            const stealPos = this.getRandomPositionAroundBall(15, isHome); // 更近的距离
+            tl.to(opponent, {
+                duration: 0.2,
+                ...stealPos,
+                ease: "power3.in",
+                onStart: () => {
+                    this.showActionText('抢断！', '#4169E1', 1.2);
+                }
+            })
+            .to(this.ball, {
+                duration: 0.3,
+                x: stealPos.x + (isHome ? -20 : 20),
+                y: stealPos.y,
+                rotation: isHome ? -Math.PI : Math.PI,
+                ease: "power3.out"
+            }, "-=0.1");
+
+            // 第四步：持球球员失去平衡后退
+            tl.to(player, {
+                duration: 0.3,
+                x: isHome ? "-=30" : "+=30",
+                rotation: isHome ? -0.2 : 0.2,
+                ease: "power2.out"
+            }, "-=0.2");
+
+            // 第五步：对手带球快速移动
+            tl.to([this.ball, opponent], {
+                duration: 0.4,
+                x: isHome ? "-=50" : "+=50",
+                ease: "power2.in"
+            });
+
+            // 最后：所有球员回到原位
+            tl.to(this.ball, {
+                duration: 0.5,
+                x: 400,
+                y: 225,
+                rotation: 0,
+                ease: "power2.inOut",
+                onComplete: () => {
+                    this.resetPlayers();
+                }
+            }, "-=0.5");
+        }
     }
 
     private animateTurnover(event: GameEvent) {
         const isHome = event.team === 'home';
         
         gsap.killTweensOf(this.ball);
-        gsap.killTweensOf(this.players.get(`${event.team}_0`));
-        
-        const player = this.players.get(`${event.team}_0`);
-        const tl = gsap.timeline();
+        const player = this.getRandomPlayer(event.team);
+        const opponent = this.getRandomOpponentPlayer(event.team);
         
         if (player) {
-            // 第一步：球员移动到球的位置
-            tl.to(player, {
+            gsap.killTweensOf(player);
+        }
+        if (opponent) {
+            gsap.killTweensOf(opponent);
+        }
+        
+        const tl = gsap.timeline();
+        
+        if (player && opponent) {
+            // 第一步：对方球员移动到球附近的随机位置
+            tl.to(opponent, {
                 duration: 0.3,
-                x: this.ball.x - (isHome ? -20 : 20),
-                y: this.ball.y,
+                ...this.getRandomPositionAroundBall(25, isHome),
                 ease: "power2.out"
             });
 
-            // 第二步：球员带球移动
+            // 第二步：球员带球遇到防守，对手继续移动
             tl.to([this.ball, player], {
                 duration: 0.4,
-                x: isHome ? "+=50" : "-=50",
+                x: isHome ? "+=30" : "-=30",
                 ease: "power1.inOut"
-            });
+            })
+            .to(opponent, {
+                duration: 0.4,
+                ...this.getRandomPositionAroundBall(25, isHome),
+                ease: "power1.inOut"
+            }, "-=0.4");
 
-            // 第三步：球脱手并快速滚向对方
-            tl.to(this.ball, {
+            // 第三步：失误发生时对手再次移动
+            const turnoverPos = this.getRandomPositionAroundBall(25, isHome);
+            tl.to(opponent, {
+                duration: 0.3,
+                ...turnoverPos,
+                ease: "power2.out"
+            })
+            .to(this.ball, {
                 duration: 0.6,
                 x: isHome ? "+=150" : "-=150",
                 rotation: isHome ? Math.PI * 3 : -Math.PI * 3,
@@ -470,22 +545,26 @@ export class GameRenderer {
                 onStart: () => {
                     this.showActionText('失误！', '#FF4500');
                 }
-            });
+            }, "-=0.2");
 
-            // 第四步：球员懊恼地后退一步
-            tl.to(player, {
-                duration: 0.3,
-                x: isHome ? "-=30" : "+=30",
+            // 第四步：对方球员追球（稍微提前预判球的位置）
+            tl.to(opponent, {
+                duration: 0.4,
+                x: this.ball.x + (isHome ? -15 : 15),
+                y: this.ball.y,
                 ease: "power2.out"
             }, "-=0.3");
 
-            // 最后：球员回到原位
-            tl.to(player, {
+            // 最后：所有球员回到原位
+            tl.to(this.ball, {
                 duration: 0.5,
-                x: isHome ? 250 : 550,
+                x: 400,
                 y: 225,
-                ease: "power2.inOut"
-            });
+                ease: "power2.inOut",
+                onComplete: () => {
+                    this.resetPlayers();
+                }
+            }, "-=0.5");
         }
     }
 
@@ -493,7 +572,7 @@ export class GameRenderer {
         const isHome = event.team === 'home';
         
         gsap.killTweensOf(this.ball);
-        const player = this.players.get(`${event.team}_0`);
+        const player = this.getRandomPlayer(event.team);
         if (player) {
             gsap.killTweensOf(player);
         }
@@ -552,7 +631,10 @@ export class GameRenderer {
                 duration: 0.5,
                 x: isHome ? 250 : 550,
                 y: 225,
-                ease: "power2.inOut"
+                ease: "power2.inOut",
+                onComplete: () => {
+                    this.resetPlayers();
+                }
             }, "-=0.5");
         } else {
             // 如果没有球员，只让球抖动
@@ -592,7 +674,7 @@ export class GameRenderer {
         }
         
         gsap.killTweensOf(this.ball);
-        const player = this.players.get(`${event.team}_0`);
+        const player = this.getRandomPlayer(event.team);
         if (player) {
             gsap.killTweensOf(player);
         }
@@ -641,7 +723,7 @@ export class GameRenderer {
                 ease: "power1.out"
             });
 
-            // 最后：球员和球回到原位
+            // 最后：球和球员回到原位
             tl.to(this.ball, {
                 duration: 0.5,
                 x: 400,
@@ -652,7 +734,10 @@ export class GameRenderer {
                 duration: 0.5,
                 x: isHome ? 250 : 550,
                 y: 225,
-                ease: "power2.inOut"
+                ease: "power2.inOut",
+                onComplete: () => {
+                    this.resetPlayers();
+                }
             }, "-=0.5");
         }
     }
@@ -675,26 +760,36 @@ export class GameRenderer {
         }
         
         gsap.killTweensOf(this.ball);
-        const player = this.players.get(`${event.team}_0`);
+        const player = this.getRandomPlayer(event.team);
+        const opponent = this.getRandomOpponentPlayer(event.team);
+        
         if (player) {
             gsap.killTweensOf(player);
+        }
+        if (opponent) {
+            gsap.killTweensOf(opponent);
         }
         
         const tl = gsap.timeline();
         
-        if (player && player instanceof PIXI.Container) {
-            // 第一步：球员快速移动到球的位置
+        if (player && player instanceof PIXI.Container && opponent) {
+            // 第一步：双方球员移动到位，防守者在球附近随机位置
             tl.to(player, {
                 duration: 0.3,
                 x: this.ball.x - (isHome ? -20 : 20),
                 y: this.ball.y,
                 ease: "power2.out"
-            });
+            })
+            .to(opponent, {
+                duration: 0.3,
+                ...this.getRandomPositionAroundBall(25, !isHome),
+                ease: "power2.out"
+            }, "-=0.3");
 
-            // 第二步：球员跳起盖帽
-            tl.to(player, {
+            // 第二步：双方球员跳起
+            tl.to([player, opponent], {
                 duration: 0.2,
-                y: "-=50", // 跳得更高一些
+                y: "-=50",
                 ease: "power1.out",
                 onStart: () => {
                     this.showActionText('盖帽！', '#4169E1', 1.2);
@@ -711,37 +806,23 @@ export class GameRenderer {
                 ease: "power3.out"
             }, "-=0.1");
 
-            // 第四步：球员落地
-            tl.to(player, {
+            // 第四步：双方球员落地
+            tl.to([player, opponent], {
                 duration: 0.2,
                 y: "+=50",
                 ease: "bounce.out"
             });
 
-            // 第五步：球继续下落并滚动
-            tl.to(this.ball, {
-                duration: 0.4,
-                y: "+=20",
-                x: `+=${40 * blockDirection}`,
-                rotation: blockDirection * Math.PI,
-                ease: "bounce.out"
-            });
-
-            // 最后：球员回到原位
-            tl.to(player, {
-                duration: 0.5,
-                x: isHome ? 250 : 550,
-                y: 225,
-                ease: "power2.inOut"
-            });
-
-            // 球回到中心
+            // 最后：所有球员回到原位（使用 resetPlayers）
             tl.to(this.ball, {
                 duration: 0.5,
                 x: 400,
                 y: 225,
                 rotation: 0,
-                ease: "power2.inOut"
+                ease: "power2.inOut",
+                onComplete: () => {
+                    this.resetPlayers();
+                }
             }, "-=0.5");
         }
     }
@@ -834,7 +915,7 @@ export class GameRenderer {
         return player;
     }
 
-    // 添加一个方法来更新球员位置
+    // 添��一个方法更新球员位置
     public updatePlayerPositions(positions: { [key: string]: { x: number, y: number } }) {
         Object.entries(positions).forEach(([playerId, position]) => {
             const player = this.players.get(playerId);
@@ -1009,5 +1090,89 @@ export class GameRenderer {
                 ease: "power2.out"
             });
         }
+    }
+
+    // 添加获取随机球员的辅助方法
+    private getRandomPlayer(team: string): PIXI.Container | undefined {
+        // 收集指定队伍的所有球员
+        const teamPlayers: PIXI.Container[] = [];
+        for (let i = 0; i < 5; i++) {
+            const player = this.players.get(`${team}_${i}`);
+            if (player) {
+                teamPlayers.push(player);
+            }
+        }
+        
+        // 随机选择一个球员
+        if (teamPlayers.length > 0) {
+            const randomIndex = Math.floor(Math.random() * teamPlayers.length);
+            return teamPlayers[randomIndex];
+        }
+        return undefined;
+    }
+
+    // 添加一个球员复位的方法
+    private resetPlayers() {
+        // 主队球员位置
+        const homePositions = [
+            { x: 150, y: 125 },
+            { x: 150, y: 225 },
+            { x: 150, y: 325 },
+            { x: 250, y: 175 },
+            { x: 250, y: 275 }
+        ];
+
+        // 客队球员位置
+        const awayPositions = [
+            { x: 650, y: 125 },
+            { x: 650, y: 225 },
+            { x: 650, y: 325 },
+            { x: 550, y: 175 },
+            { x: 550, y: 275 }
+        ];
+
+        // 重置所有主队球员
+        for (let i = 0; i < 5; i++) {
+            const player = this.players.get(`home_${i}`);
+            if (player) {
+                gsap.to(player, {
+                    duration: 0.5,
+                    x: homePositions[i].x,
+                    y: homePositions[i].y,
+                    ease: "power2.inOut"
+                });
+            }
+        }
+
+        // 重置所有客队球员
+        for (let i = 0; i < 5; i++) {
+            const player = this.players.get(`away_${i}`);
+            if (player) {
+                gsap.to(player, {
+                    duration: 0.5,
+                    x: awayPositions[i].x,
+                    y: awayPositions[i].y,
+                    ease: "power2.inOut"
+                });
+            }
+        }
+    }
+
+    // 添加获取对方随机球员的方法
+    private getRandomOpponentPlayer(team: string): PIXI.Container | undefined {
+        // 获取对方队伍的标识
+        const opponentTeam = team === 'home' ? 'away' : 'home';
+        return this.getRandomPlayer(opponentTeam);
+    }
+
+    // 添加一个获取圆形范围内随机位置的辅助方法
+    private getRandomPositionAroundBall(radius: number, isHome: boolean): { x: number, y: number } {
+        const angle = Math.random() * Math.PI * 2; // 随机角度
+        const r = Math.sqrt(Math.random()) * radius; // 随机半径（使用平方根使分布更均匀）
+        
+        return {
+            x: this.ball.x + r * Math.cos(angle),
+            y: this.ball.y + r * Math.sin(angle)
+        };
     }
 } 

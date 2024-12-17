@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { GameState } from '../types';
 import { GameRenderer } from '../core/renderer/GameRenderer';
 
@@ -11,7 +11,7 @@ export interface GameViewerRef {
     showStartText: () => void;
 }
 
-export const GameViewer = forwardRef<GameViewerRef, GameViewerProps>(({ gameState }, ref) => {
+export const GameViewer = forwardRef<GameViewerRef, GameViewerProps>(({ gameState, currentEventIndex }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const rendererRef = useRef<GameRenderer | null>(null);
 
@@ -33,6 +33,14 @@ export const GameViewer = forwardRef<GameViewerRef, GameViewerProps>(({ gameStat
             rendererRef.current.updateGameState(gameState);
         }
     }, [gameState]);
+
+    useEffect(() => {
+        if (rendererRef.current && gameState && currentEventIndex < gameState.events.length) {
+            const currentEvent = gameState.events[currentEventIndex];
+            console.log('Playing event:', currentEvent);
+            rendererRef.current.playEvent(currentEvent);
+        }
+    }, [currentEventIndex, gameState]);
 
     useImperativeHandle(ref, () => ({
         showStartText: () => {

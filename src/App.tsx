@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GameViewer } from './components/GameViewer';
+import { GameViewer, GameViewerRef } from './components/GameViewer';
 import { StatsViewer } from './components/StatsViewer';
 import { Loading } from './components/Loading';
 import { GameState, GameStatus, Team, Player, GameEventType, GameEvent } from './types';
@@ -16,7 +16,7 @@ const App: React.FC = () => {
     const [currentEventIndex, setCurrentEventIndex] = useState(0);
     const [playbackSpeed, setPlaybackSpeed] = useState(1);
     const playIntervalRef = useRef<ReturnType<typeof setInterval>>();
-    const gameViewerRef = useRef<React.RefObject<GameViewer> | null>(null);
+    const gameViewerRef = useRef<GameViewerRef>(null);
 
     // 初始化球员数据
     const initializePlayers = (teamId: string, playerNames: string[]): Player[] => {
@@ -140,7 +140,6 @@ const App: React.FC = () => {
 
     const calculatePlayTime = (events: GameEvent[]): { [key: string]: number } => {
         const playTime: { [key: string]: number } = {};
-        let currentQuarter = 1;
         
         // 记录每个球员的状态
         const playerStatus: { [key: string]: { inGame: boolean, lastTimeUpdate: string } } = {};
@@ -248,13 +247,12 @@ const App: React.FC = () => {
         initializeAllPlayers();
 
         // 处理每个事件
-        events.forEach((event, index) => {
+        events.forEach((event) => {
             // 先更新所有在场球员的时间
             updatePlayersTime(event.time);
             
             // 更新当前节数
             if (event.type === GameEventType.QUARTER_START) {
-                currentQuarter = event.quarter;
                 // 在每节开始时更新所有在场球员的lastTimeUpdate
                 Object.keys(playerStatus).forEach(key => {
                     if (playerStatus[key].inGame) {
@@ -278,7 +276,7 @@ const App: React.FC = () => {
             }
         });
 
-        // 将秒数转换为分钟并返回
+        // 将秒数转换为分钟��返回
         const minutesPlayTime: { [key: string]: number } = {};
         Object.entries(playTime).forEach(([key, seconds]) => {
             minutesPlayTime[key] = Math.round(seconds / 60);
@@ -308,7 +306,7 @@ const App: React.FC = () => {
                 const [_, inPlayer, outPlayer] = subMatch;
                 const team = event.team === 'home' ? state.homeTeam : state.awayTeam;
                 
-                // 找到换入和换出的球员
+                // 找到换��和换出的球员
                 const inPlayerObj = team.players.find(p => p.name === inPlayer.trim());
                 const outPlayerObj = team.players.find(p => p.name === outPlayer.trim());
 
@@ -512,7 +510,7 @@ const App: React.FC = () => {
                 time: '12:00'
             };
 
-            // 重新处理到当前事件之��的所有事件
+            // 重新处理到当前事件之前的所有事件
             for (let i = 0; i < currentEventIndex - 1; i++) {
                 processEvent(newState, gameState.events[i]);
             }
@@ -607,6 +605,12 @@ const App: React.FC = () => {
             }
         };
     }, []);
+
+    useEffect(() => {
+        if (gameState && currentEventIndex < gameState.events.length) {
+            console.log('Current event:', gameState.events[currentEventIndex]); // 添加日志
+        }
+    }, [currentEventIndex, gameState]);
 
     if (loading) {
         return <Loading message={loadingMessage} />;

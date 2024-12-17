@@ -1,0 +1,110 @@
+@startuml 类图
+package "Core" {
+  class EventParser {
+    + parseEventText(text: string): GameEvent[]
+    - parseEvent(line: string): GameEvent
+  }
+  
+  class GameRenderer {
+    + render(state: GameState)
+    - updateScene()
+    - animateEvent()
+  }
+}
+
+package "Types" {
+  enum GameStatus {
+    NOT_STARTED
+    IN_PROGRESS
+    FINISHED
+  }
+  
+  enum GameEventType {
+    QUARTER_START
+    TWO_POINTS_MADE
+    THREE_POINTS_MADE
+    FREE_THROW_MADE
+    REBOUND
+    ASSIST
+    BLOCK
+    STEAL
+    FOUL
+    TURNOVER
+    SUBSTITUTION
+  }
+  
+  class GameState {
+    + id: string
+    + homeTeam: Team
+    + awayTeam: Team
+    + quarter: number
+    + time: string
+    + events: GameEvent[]
+    + status: GameStatus
+  }
+  
+  class Team {
+    + id: string
+    + name: string
+    + logo: string
+    + players: Player[]
+    + stats: TeamStats
+  }
+  
+  class Player {
+    + id: string
+    + name: string
+    + number: string
+    + position: string
+    + team: string
+    + stats: PlayerStats
+  }
+  
+  class GameEvent {
+    + type: GameEventType
+    + time: string
+    + quarter: number
+    + team: string
+    + player: string
+    + points: number
+    + description: string
+  }
+}
+
+package "Components" {
+  class App {
+    - gameState: GameState
+    - loading: boolean
+    - isPlaying: boolean
+    + handlePlay()
+    + handlePause()
+    + handleNext()
+    + handlePrev()
+  }
+  
+  class GameViewer {
+    - renderer: GameRenderer
+    + render()
+  }
+  
+  class StatsViewer {
+    + homeTeam: Team
+    + awayTeam: Team
+    + render()
+  }
+  
+  class GameControl {
+    + onPlay: () => void
+    + onPause: () => void
+    + onNext: () => void
+    + onPrev: () => void
+  }
+}
+
+GameState "1" *-- "2" Team
+Team "1" *-- "*" Player
+GameState "1" *-- "*" GameEvent
+App "1" *-- "1" GameViewer
+App "1" *-- "1" StatsViewer
+App "1" *-- "1" GameControl
+@enduml 

@@ -1,0 +1,39 @@
+@startuml 时序图
+actor 观众
+participant App
+participant GameControl
+participant GameViewer
+participant StatsViewer
+participant EventParser
+participant GameRenderer
+
+观众 -> App: 打开应用
+activate App
+
+App -> EventParser: 解析比赛数据
+activate EventParser
+EventParser --> App: 返回事件列表
+deactivate EventParser
+
+App -> GameViewer: 初始化场景
+activate GameViewer
+GameViewer -> GameRenderer: 创建渲染器
+GameViewer --> App: 场景就绪
+deactivate GameViewer
+
+App -> StatsViewer: 初始化统计数据
+activate StatsViewer
+StatsViewer --> App: 统计视图就绪
+deactivate StatsViewer
+
+观众 -> GameControl: 点击播放
+activate GameControl
+GameControl -> App: 开始播放
+loop 每个事件
+    App -> GameViewer: 更新场景
+    App -> StatsViewer: 更新统计
+end
+GameControl --> 观众: 播放完成
+deactivate GameControl
+
+@enduml 

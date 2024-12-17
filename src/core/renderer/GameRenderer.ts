@@ -156,7 +156,10 @@ export class GameRenderer {
         const isThree = event.type === GameEventType.THREE_POINTS_MADE;
         
         gsap.killTweensOf(this.ball);
-        gsap.killTweensOf(this.players.get(`${event.team}_0`));
+        const player = this.players.get(`${event.team}_0`);
+        if (player) {
+            gsap.killTweensOf(player);
+        }
         
         // 设置球的起始位置
         gsap.set(this.ball, {
@@ -165,7 +168,6 @@ export class GameRenderer {
         });
 
         const tl = gsap.timeline();
-        const player = this.players.get(`${event.team}_0`);
         
         if (player) {
             // 第一步：球员移动到球的位置
@@ -180,7 +182,7 @@ export class GameRenderer {
             let shootingSpotX, shootingSpotY;
             if (isThree) {
                 // 三分球时，站在对方三分线上
-                const oppositeThreePointX = isHome ? 440 : 360; // 对方三分线圆弧中心
+                const oppositeThreePointX = isHome ? 440 : 360;
                 shootingSpotX = oppositeThreePointX;
                 shootingSpotY = 225;
 
@@ -261,7 +263,10 @@ export class GameRenderer {
         const isThree = event.type === GameEventType.THREE_POINTS_MISSED;
         
         gsap.killTweensOf(this.ball);
-        gsap.killTweensOf(this.players.get(`${event.team}_0`));
+        const player = this.players.get(`${event.team}_0`);
+        if (player) {
+            gsap.killTweensOf(player);
+        }
         
         // 设置球的起始位置
         gsap.set(this.ball, {
@@ -270,9 +275,8 @@ export class GameRenderer {
         });
 
         const tl = gsap.timeline();
-        const player = this.players.get(`${event.team}_0`);
         
-        if (player) {
+        if (player && player instanceof PIXI.Container) {
             // 第一步：球员移动到球的位置
             tl.to(player, {
                 duration: 0.3,
@@ -290,7 +294,7 @@ export class GameRenderer {
                 shootingSpotY = 225;
 
                 // 球员和球一起移动到三分线
-                tl.to([this.ball, player], {
+                tl.to([this.ball, player!], {
                     duration: 0.4,
                     x: shootingSpotX,
                     y: shootingSpotY,
@@ -328,7 +332,7 @@ export class GameRenderer {
                 shootingSpotY = 225;
 
                 // 球员和球一起移动到投篮点并完成投篮
-                tl.to([this.ball, player], {
+                tl.to([this.ball, player!], {
                     duration: 0.4,
                     x: shootingSpotX,
                     y: shootingSpotY,
@@ -435,79 +439,311 @@ export class GameRenderer {
     private animateTurnover(event: GameEvent) {
         const isHome = event.team === 'home';
         
-        this.showActionText('失误！', '#FF4500');
-        
         gsap.killTweensOf(this.ball);
+        gsap.killTweensOf(this.players.get(`${event.team}_0`));
         
-        // 移动球员到球的位置
-        this.movePlayerWithBall(this.ball.x, this.ball.y, event.team);
-        
-        gsap.to([this.ball, this.players.get(`${event.team}_0`)], {
-            duration: 0.5,
-            x: isHome ? "+=150" : "-=150",
-            ease: "power3.in",
-            onComplete: () => {
-                // 球员回到原位
-                const player = this.players.get(`${event.team}_0`);
-                if (player) {
-                    gsap.to(player, {
-                        duration: 0.5,
-                        x: isHome ? 250 : 550,
-                        y: 225,
-                        ease: "power2.inOut"
-                    });
-                }
-            }
-        });
-    }
-
-    private animateFoul() {
-        gsap.killTweensOf(this.ball);
-        
-        // 犯规动画球轻微抖动
+        const player = this.players.get(`${event.team}_0`);
         const tl = gsap.timeline();
         
-        tl.to(this.ball, {
-            duration: 0.1,
-            x: "+=5",
-            yoyo: true,
-            repeat: 3,
-            ease: "none"
-        })
-        .to(this.ball, {
-            duration: 0.1,
-            y: "+=5",
-            yoyo: true,
-            repeat: 3,
-            ease: "none"
-        }, "-=0.4");
+        if (player) {
+            // 第一步：球员移动到球的位置
+            tl.to(player, {
+                duration: 0.3,
+                x: this.ball.x - (isHome ? -20 : 20),
+                y: this.ball.y,
+                ease: "power2.out"
+            });
+
+            // 第二步：球员带球移动
+            tl.to([this.ball, player], {
+                duration: 0.4,
+                x: isHome ? "+=50" : "-=50",
+                ease: "power1.inOut"
+            });
+
+            // 第三步：球脱手并快速滚向对方
+            tl.to(this.ball, {
+                duration: 0.6,
+                x: isHome ? "+=150" : "-=150",
+                rotation: isHome ? Math.PI * 3 : -Math.PI * 3,
+                ease: "power3.in",
+                onStart: () => {
+                    this.showActionText('失误！', '#FF4500');
+                }
+            });
+
+            // 第四步：球员懊恼地后退一步
+            tl.to(player, {
+                duration: 0.3,
+                x: isHome ? "-=30" : "+=30",
+                ease: "power2.out"
+            }, "-=0.3");
+
+            // 最后：球员回到原位
+            tl.to(player, {
+                duration: 0.5,
+                x: isHome ? 250 : 550,
+                y: 225,
+                ease: "power2.inOut"
+            });
+        }
     }
 
-    private animateRebound(_event: GameEvent) {
-        // Kill any existing animations
+    private animateFoul(event: GameEvent) {
+        const isHome = event.team === 'home';
+        
         gsap.killTweensOf(this.ball);
+        const player = this.players.get(`${event.team}_0`);
+        if (player) {
+            gsap.killTweensOf(player);
+        }
+        
+        const tl = gsap.timeline();
+        
+        if (player && player instanceof PIXI.Container) {
+            // 第一步：球员移动到球的位置
+            tl.to(player, {
+                duration: 0.3,
+                x: this.ball.x - (isHome ? -20 : 20),
+                y: this.ball.y,
+                ease: "power2.out"
+            });
 
-        gsap.to(this.ball, {
-            duration: 0.5,
-            y: "-=50",
-            yoyo: true,
-            repeat: 1,
-            ease: "power1.inOut"
-        });
+            // 第二步：球员和球一起抖动，模拟犯规动作
+            tl.to([this.ball, player], {
+                duration: 0.1,
+                x: "+=5",
+                yoyo: true,
+                repeat: 2,
+                ease: "none",
+                onStart: () => {
+                    this.showActionText('犯规！', '#FF4500', 1.2);
+                }
+            });
+
+            // 第三步：球和球员分开
+            tl.to(this.ball, {
+                duration: 0.2,
+                x: isHome ? "+=30" : "-=30",
+                y: "-=10",
+                ease: "power1.out"
+            })
+            .to(player, {
+                duration: 0.2,
+                x: isHome ? "-=20" : "+=20",
+                ease: "power1.out"
+            }, "-=0.2");
+
+            // 第四步：球轻微弹跳
+            tl.to(this.ball, {
+                duration: 0.3,
+                y: "+=10",
+                ease: "bounce.out"
+            });
+
+            // 最后：球员和球回到原位
+            tl.to(this.ball, {
+                duration: 0.5,
+                x: 400,
+                y: 225,
+                ease: "power2.inOut"
+            })
+            .to(player, {
+                duration: 0.5,
+                x: isHome ? 250 : 550,
+                y: 225,
+                ease: "power2.inOut"
+            }, "-=0.5");
+        } else {
+            // 如果没有球员，只让球抖动
+            tl.to(this.ball, {
+                duration: 0.1,
+                x: "+=5",
+                yoyo: true,
+                repeat: 3,
+                ease: "none",
+                onStart: () => {
+                    this.showActionText('犯规！', '#FF4500', 1.2);
+                }
+            })
+            .to(this.ball, {
+                duration: 0.1,
+                y: "+=5",
+                yoyo: true,
+                repeat: 3,
+                ease: "none"
+            }, "-=0.4");
+        }
+    }
+
+    private animateRebound(event: GameEvent) {
+        const isHome = event.team === 'home';
+        const ballX = this.ball.x;
+        
+        // 判断球是否在篮筐附近
+        const isNearHomeBasket = ballX > 700; // 主队篮筐在右侧 (750)
+        const isNearAwayBasket = ballX < 100; // 客队篮筐在左侧 (50)
+        
+        // 如果球不在正确的篮筐位置，先移动到正确位置
+        if (isHome && !isNearAwayBasket) {
+            this.ball.x = 80; // 移动到客队篮筐附近
+        } else if (!isHome && !isNearHomeBasket) {
+            this.ball.x = 720; // 移动到主队篮筐附近
+        }
+        
+        gsap.killTweensOf(this.ball);
+        const player = this.players.get(`${event.team}_0`);
+        if (player) {
+            gsap.killTweensOf(player);
+        }
+        
+        const tl = gsap.timeline();
+        
+        if (player && player instanceof PIXI.Container) {
+            // 第一步：球弹起（根据在哪个篮筐调整方向）
+            const reboundDirection = isHome ? -1 : 1; // 主队抢板往左，客队抢板往右
+            
+            tl.to(this.ball, {
+                duration: 0.4,
+                y: "-=40",
+                x: `+=${20 * reboundDirection}`, // 球的横向弹动
+                ease: "power2.out"
+            });
+
+            // 第二步：球员快速移动到球的位置准备抢板
+            tl.to(player, {
+                duration: 0.3,
+                x: this.ball.x - (isHome ? -20 : 20),
+                y: this.ball.y + 40,
+                ease: "power2.out"
+            }, "-=0.2");
+
+            // 第三步：球员跳起抢到篮板
+            tl.to([this.ball, player], {
+                duration: 0.3,
+                y: "-=30",
+                x: `+=${10 * reboundDirection}`, // 抢板时略微向外移动
+                ease: "power2.out",
+                onStart: () => {
+                    this.showActionText('篮板球！', '#4169E1');
+                }
+            })
+            .to([this.ball, player], {
+                duration: 0.3,
+                y: "+=30",
+                ease: "bounce.out"
+            });
+
+            // 第四步：球员带球后撤
+            tl.to([this.ball, player], {
+                duration: 0.4,
+                x: `+=${30 * reboundDirection}`, // 后撤方向与球队相关
+                ease: "power1.out"
+            });
+
+            // 最后：球员和球回到原位
+            tl.to(this.ball, {
+                duration: 0.5,
+                x: 400,
+                y: 225,
+                ease: "power2.inOut"
+            })
+            .to(player, {
+                duration: 0.5,
+                x: isHome ? 250 : 550,
+                y: 225,
+                ease: "power2.inOut"
+            }, "-=0.5");
+        }
     }
 
     private animateBlock(event: GameEvent) {
-        // 显示盖帽文字
-        this.showActionText('盖帽！', '#4169E1', 1.2);
+        const isHome = event.team === 'home';
+        const ballX = this.ball.x;
+        
+        // 判断球是否在篮筐附近
+        const isNearHomeBasket = ballX > 700; // 主队篮筐在右侧 (750)
+        const isNearAwayBasket = ballX < 100; // 客队篮筐在左侧 (50)
+        
+        // 如果球不在正确的篮筐位置，先移动到正确位置
+        if (isHome && !isNearAwayBasket) {
+            this.ball.x = 80; // 移动到客队篮筐附近
+            this.ball.y = 225; // 确保在篮筐高度
+        } else if (!isHome && !isNearHomeBasket) {
+            this.ball.x = 720; // 移动到主队篮筐附近
+            this.ball.y = 225; // 确保在篮筐高度
+        }
         
         gsap.killTweensOf(this.ball);
+        const player = this.players.get(`${event.team}_0`);
+        if (player) {
+            gsap.killTweensOf(player);
+        }
+        
+        const tl = gsap.timeline();
+        
+        if (player && player instanceof PIXI.Container) {
+            // 第一步：球员快速移动到球的位置
+            tl.to(player, {
+                duration: 0.3,
+                x: this.ball.x - (isHome ? -20 : 20),
+                y: this.ball.y,
+                ease: "power2.out"
+            });
 
-        gsap.to(this.ball, {
-            duration: 0.3,
-            y: "+=30",
-            x: event.team === 'home' ? "-=50" : "+=50",
-            ease: "power3.out"
-        });
+            // 第二步：球员跳起盖帽
+            tl.to(player, {
+                duration: 0.2,
+                y: "-=50", // 跳得更高一些
+                ease: "power1.out",
+                onStart: () => {
+                    this.showActionText('盖帽！', '#4169E1', 1.2);
+                }
+            });
+
+            // 第三步：球被盖出去（方向与球队相反）
+            const blockDirection = isHome ? -1 : 1;
+            tl.to(this.ball, {
+                duration: 0.3,
+                y: "-=20",
+                x: `+=${60 * blockDirection}`,
+                rotation: blockDirection * Math.PI * 2,
+                ease: "power3.out"
+            }, "-=0.1");
+
+            // 第四步：球员落地
+            tl.to(player, {
+                duration: 0.2,
+                y: "+=50",
+                ease: "bounce.out"
+            });
+
+            // 第五步：球继续下落并滚动
+            tl.to(this.ball, {
+                duration: 0.4,
+                y: "+=20",
+                x: `+=${40 * blockDirection}`,
+                rotation: blockDirection * Math.PI,
+                ease: "bounce.out"
+            });
+
+            // 最后：球员回到原位
+            tl.to(player, {
+                duration: 0.5,
+                x: isHome ? 250 : 550,
+                y: 225,
+                ease: "power2.inOut"
+            });
+
+            // 球回到中心
+            tl.to(this.ball, {
+                duration: 0.5,
+                x: 400,
+                y: 225,
+                rotation: 0,
+                ease: "power2.inOut"
+            }, "-=0.5");
+        }
     }
 
     public updateGameState(_state: GameState) {
@@ -712,7 +948,7 @@ export class GameRenderer {
         });
     }
 
-    // 添加显示文字动画的方法
+    // 添加显示字动画的方法
     private showActionText(text: string, color: string = '#FF0000', scale: number = 1) {
         const style = new PIXI.TextStyle({
             fontFamily: 'Arial',

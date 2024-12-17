@@ -16,6 +16,7 @@ const App: React.FC = () => {
     const [currentEventIndex, setCurrentEventIndex] = useState(0);
     const [playbackSpeed, setPlaybackSpeed] = useState(1);
     const playIntervalRef = useRef<ReturnType<typeof setInterval>>();
+    const gameViewerRef = useRef<React.RefObject<GameViewer> | null>(null);
 
     // 初始化球员数据
     const initializePlayers = (teamId: string, playerNames: string[]): Player[] => {
@@ -466,6 +467,9 @@ const App: React.FC = () => {
     };
 
     const handlePlay = () => {
+        if (currentEventIndex === 0 && gameViewerRef.current) {
+            gameViewerRef.current.showStartText();
+        }
         setIsPlaying(true);
         playIntervalRef.current = setInterval(() => {
             setCurrentEventIndex(prev => {
@@ -508,7 +512,7 @@ const App: React.FC = () => {
                 time: '12:00'
             };
 
-            // 重新处理到当前事件之前的所有事件
+            // 重新处理到当前事件之��的所有事件
             for (let i = 0; i < currentEventIndex - 1; i++) {
                 processEvent(newState, gameState.events[i]);
             }
@@ -639,7 +643,7 @@ const App: React.FC = () => {
                 </>
             )}
             <main style={{ display: 'flex', gap: '20px', marginTop: '20px' }}>
-                <GameViewer gameState={gameState} currentEventIndex={currentEventIndex} />
+                <GameViewer gameState={gameState} currentEventIndex={currentEventIndex} ref={gameViewerRef} />
                 <StatsViewer 
                     homeTeam={gameState.homeTeam}
                     awayTeam={gameState.awayTeam}

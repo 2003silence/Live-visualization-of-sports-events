@@ -14,6 +14,7 @@ export class GameRenderer {
     private ball: PIXI.Sprite;
     private players: Map<string, PIXI.Container>;
     private animations: Map<GameEventType, (event: GameEvent) => void>;
+    private gameStartText: PIXI.Text | null = null;
 
     constructor(container: HTMLDivElement) {
         // 创建PIXI应用
@@ -36,6 +37,7 @@ export class GameRenderer {
 
         // 初始化球员
         this.players = new Map();
+        this.createPlayers();
 
         // 初始化动画处理器
         this.animations = new Map();
@@ -64,24 +66,31 @@ export class GameRenderer {
         lines.drawCircle(400, 225, 40);
 
         // 左侧罚球区
-        lines.beginFill(0xCC0000, 0.3); // 红色半透明
-        lines.drawRect(50, 125, 150, 200);
+        lines.beginFill(0xCC0000, 0.3);
+        lines.drawRect(50, 135, 200, 180);
         lines.endFill();
 
         // 右侧罚球区
         lines.beginFill(0xCC0000, 0.3);
-        lines.drawRect(600, 125, 150, 200);
+        lines.drawRect(550, 135, 200, 180);
         lines.endFill();
 
         // 三分线
         lines.lineStyle(2, 0xFFFFFF, 0.8);
-        lines.moveTo(50, 125);
-        lines.arcTo(250, 225, 50, 325, 200);
-        lines.lineTo(50, 325);
+        
+        // 左侧三分线
+        lines.moveTo(50, 75);  // 开始于底线
+        lines.lineTo(200, 75); // 直线部分
+        lines.arc(200, 225, 150, -Math.PI/2, Math.PI/2); // 弧线部分
+        lines.lineTo(50, 375); // 直线部分
 
-        lines.moveTo(750, 125);
-        lines.arcTo(550, 225, 750, 325, 200);
-        lines.lineTo(750, 325);
+        // 右侧三分线
+        lines.moveTo(750, 75);  // 开始于底线
+        lines.lineTo(600, 75);  // 直线部分
+        lines.arc(600, 225, 150, -Math.PI/2, Math.PI/2, true); // 弧线部分
+        lines.lineTo(750, 375); // 直线部分
+
+
 
         // 篮板和篮筐
         const leftBasket = new PIXI.Graphics();
@@ -121,27 +130,6 @@ export class GameRenderer {
         return sprite;
     }
 
-    private createPlayer(team: string, number: string): PIXI.Container {
-        const player = new PIXI.Container();
-
-        // 球员图标
-        const icon = new PIXI.Graphics();
-        icon.beginFill(team === 'home' ? 0xFF0000 : 0x0000FF);
-        icon.drawCircle(0, 0, 10);
-        icon.endFill();
-
-        // 球员号码
-        const text = new PIXI.Text(number, {
-            fontSize: 10,
-            fill: 0xFFFFFF
-        });
-        text.anchor.set(0.5);
-
-        player.addChild(icon);
-        player.addChild(text);
-        return player;
-    }
-
     private initializeAnimations() {
         this.animations.set(GameEventType.TWO_POINTS_MADE, this.animateShot.bind(this));
         this.animations.set(GameEventType.THREE_POINTS_MADE, this.animateShot.bind(this));
@@ -153,7 +141,6 @@ export class GameRenderer {
 
     private animateShot(event: GameEvent) {
         const isHome = event.team === 'home';
-        const startX = isHome ? 200 : 600;
         const endX = isHome ? 750 : 50;
 
         // Kill any existing animations
@@ -178,7 +165,7 @@ export class GameRenderer {
         });
     }
 
-    private animateRebound(event: GameEvent) {
+    private animateRebound(_event: GameEvent) {
         // Kill any existing animations
         gsap.killTweensOf(this.ball);
 
@@ -203,7 +190,7 @@ export class GameRenderer {
         });
     }
 
-    public updateGameState(state: GameState) {
+    public updateGameState(_state: GameState) {
         // 更新球场状态
         // 可以根据需要添加更多状态更新逻辑
     }
@@ -224,5 +211,153 @@ export class GameRenderer {
         // Kill all animations before destroying
         gsap.killTweensOf(this.ball);
         this.app.destroy(true);
+    }
+
+    private createPlayers() {
+        // 创建主队球员
+        const homePositions = [
+            { x: 150, y: 125 },
+            { x: 150, y: 225 },
+            { x: 150, y: 325 },
+            { x: 250, y: 175 },
+            { x: 250, y: 275 }
+        ];
+
+        // 创建客队球员
+        const awayPositions = [
+            { x: 650, y: 125 },
+            { x: 650, y: 225 },
+            { x: 650, y: 325 },
+            { x: 550, y: 175 },
+            { x: 550, y: 275 }
+        ];
+
+        // 创建主队球员
+        homePositions.forEach((pos, index) => {
+            const player = this.createPlayer('home', (index + 1).toString());
+            player.position.set(pos.x, pos.y);
+            this.court.addChild(player);
+            this.players.set(`home_${index}`, player);
+        });
+
+        // 创建客队球员
+        awayPositions.forEach((pos, index) => {
+            const player = this.createPlayer('away', (index + 1).toString());
+            player.position.set(pos.x, pos.y);
+            this.court.addChild(player);
+            this.players.set(`away_${index}`, player);
+        });
+    }
+
+    private createPlayer(team: string, number: string): PIXI.Container {
+        const player = new PIXI.Container();
+
+        // 球员图标（圆形）
+        const icon = new PIXI.Graphics();
+        icon.beginFill(team === 'home' ? 0xFF0000 : 0x0000FF);
+        icon.drawCircle(0, 0, 15);  // 增大圆形尺寸
+        icon.endFill();
+
+        // 球员号码
+        const text = new PIXI.Text(number, {
+            fontSize: 12,
+            fill: 0xFFFFFF,
+            fontWeight: 'bold'
+        });
+        text.anchor.set(0.5);
+
+        player.addChild(icon);
+        player.addChild(text);
+        return player;
+    }
+
+    // 添加一个方法来更新球员位置
+    public updatePlayerPositions(positions: { [key: string]: { x: number, y: number } }) {
+        Object.entries(positions).forEach(([playerId, position]) => {
+            const player = this.players.get(playerId);
+            if (player) {
+                gsap.to(player, {
+                    duration: 0.5,
+                    x: position.x,
+                    y: position.y,
+                    ease: "power1.out"
+                });
+            }
+        });
+    }
+
+    public showGameStartText() {
+        // 如果已经有文字在显示，则返回
+        if (this.gameStartText) {
+            return;
+        }
+
+        // 创建半透明黑色背景
+        const overlay = new PIXI.Graphics();
+        overlay.beginFill(0x000000, 0.5);
+        overlay.drawRect(0, 0, this.app.screen.width, this.app.screen.height);
+        overlay.endFill();
+        overlay.alpha = 0; // 初始设置为透明
+        this.court.addChild(overlay);
+
+        // 创建艺术字体的文本样式
+        const style = new PIXI.TextStyle({
+            fontFamily: 'Arial',
+            fontSize: 48,
+            fontWeight: 'bold',
+            fill: ['#FF0000'],
+            stroke: '#FFFFFF',
+            strokeThickness: 5,
+            dropShadow: true,
+            dropShadowColor: '#000000',
+            dropShadowBlur: 4,
+            dropShadowAngle: Math.PI / 6,
+            dropShadowDistance: 6,
+        });
+
+        this.gameStartText = new PIXI.Text('比赛开始!', style);
+        this.gameStartText.anchor.set(0.5);
+        this.gameStartText.position.set(
+            this.app.screen.width / 2,
+            this.app.screen.height / 2
+        );
+        this.gameStartText.scale.set(0.5); // 初始缩放
+        this.court.addChild(this.gameStartText);
+
+        // 创建动画时间轴
+        const tl = gsap.timeline();
+
+        // 背景淡入
+        tl.to(overlay, {
+            alpha: 1,
+            duration: 0.3,
+            ease: "power2.inOut"
+        })
+        // 文字弹出动画
+        .to(this.gameStartText.scale, {
+            x: 1,
+            y: 1,
+            duration: 1,
+            ease: "elastic.out(1, 0.3)"
+        })
+        // 保持显示
+        .to({}, {
+            duration: 1.2 // 停留时间
+        })
+        // 同时淡出文字和背景
+        .to([this.gameStartText, overlay], {
+            alpha: 0,
+            duration: 0.3,
+            ease: "power2.in",
+            onComplete: () => {
+                if (this.gameStartText && this.gameStartText.parent) {
+                    this.gameStartText.parent.removeChild(this.gameStartText);
+                    this.gameStartText = null;
+                }
+                if (overlay.parent) {
+                    overlay.parent.removeChild(overlay);
+                }
+            }
+        });
     }
 } 

@@ -1,13 +1,17 @@
-import React, { useEffect, useRef } from 'react';
-import { GameRenderer } from '../core/renderer/GameRenderer';
+import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { GameState } from '../types';
+import { GameRenderer } from '../core/renderer/GameRenderer';
 
 interface GameViewerProps {
     gameState: GameState;
     currentEventIndex: number;
 }
 
-export const GameViewer: React.FC<GameViewerProps> = ({ gameState, currentEventIndex }) => {
+export interface GameViewerRef {
+    showStartText: () => void;
+}
+
+export const GameViewer = forwardRef<GameViewerRef, GameViewerProps>(({ gameState }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const rendererRef = useRef<GameRenderer | null>(null);
 
@@ -15,6 +19,13 @@ export const GameViewer: React.FC<GameViewerProps> = ({ gameState, currentEventI
         if (containerRef.current && !rendererRef.current) {
             rendererRef.current = new GameRenderer(containerRef.current);
         }
+
+        return () => {
+            if (rendererRef.current) {
+                rendererRef.current.destroy();
+                rendererRef.current = null;
+            }
+        };
     }, []);
 
     useEffect(() => {
@@ -23,5 +34,26 @@ export const GameViewer: React.FC<GameViewerProps> = ({ gameState, currentEventI
         }
     }, [gameState]);
 
-    return <div ref={containerRef} className="game-viewer" />;
-}; 
+    useImperativeHandle(ref, () => ({
+        showStartText: () => {
+            if (rendererRef.current) {
+                rendererRef.current.showGameStartText();
+            }
+        }
+    }));
+
+    return (
+        <div 
+            ref={containerRef} 
+            style={{ 
+                width: '800px', 
+                height: '450px', 
+                backgroundColor: '#2C2C2C',
+                borderRadius: '8px',
+                overflow: 'hidden'
+            }}
+        />
+    );
+});
+
+GameViewer.displayName = 'GameViewer'; 

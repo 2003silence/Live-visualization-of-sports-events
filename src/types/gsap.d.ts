@@ -1,34 +1,22 @@
+import { Tween, TweenVars } from 'gsap';
+
 declare module 'gsap' {
-    export interface TweenVars {
-        duration?: number;
-        x?: number | string;
-        y?: number | string;
-        ease?: string;
-        yoyo?: boolean;
-        repeat?: number;
-        alpha?: number;
-        onComplete?: () => void;
-        [key: string]: any;
-    }
-
-    export class Tween {
-        kill(): void;
-        pause(): this;
-        play(): this;
-        progress(value?: number): number;
-        restart(): this;
-        resume(): this;
-        reverse(): this;
-        seek(position: number | string): this;
-    }
-
-    export const gsap: {
+    interface GSAPStatic {
         to(target: any, vars: TweenVars): Tween;
         from(target: any, vars: TweenVars): Tween;
         fromTo(target: any, fromVars: TweenVars, toVars: TweenVars): Tween;
         set(target: any, vars: TweenVars): Tween;
+        timeline(vars?: {}): Timeline;
+        killTweensOf(target: any): void;
         registerPlugin(...args: any[]): void;
-    };
+    }
+
+    interface Timeline {
+        to(target: any, vars: TweenVars): Timeline;
+    }
+
+    const gsap: GSAPStatic;
+    export { gsap };
 }
 
 declare module 'gsap/PixiPlugin' {

@@ -14,6 +14,24 @@ export class GameRenderer {
     private ball: PIXI.Sprite;
     private players: Map<string, PIXI.Container>;
     private animations: Map<GameEventType, (event: GameEvent) => void>;
+    private readonly INITIAL_POSITIONS = {
+        home: [
+            {x: 150, y: 150},
+            {x: 150, y: 300},
+            {x: 250, y: 225},
+            {x: 300, y: 150},
+            {x: 300, y: 300}
+        ],
+        away: [
+            {x: 650, y: 150},
+            {x: 650, y: 300},
+            {x: 550, y: 225},
+            {x: 500, y: 150},
+            {x: 500, y: 300}
+        ]
+    };
+    private gameStartText: PIXI.Text | null = null;
+    private overlay: PIXI.Graphics | null = null;
 
     constructor(container: HTMLDivElement) {
         // 创建PIXI应用
@@ -30,16 +48,22 @@ export class GameRenderer {
         this.app.stage.addChild(this.court);
         this.drawCourt();
 
-        // 创建篮球
-        this.ball = this.createBall();
-        this.court.addChild(this.ball);
-
         // 初始化球员
         this.players = new Map();
+
+        // 创建篮球 - 移到最后创建，确保在最上层
+        this.ball = this.createBall();
+        this.app.stage.addChild(this.ball); // 直接添加到stage而不是court
 
         // 初始化动画处理器
         this.animations = new Map();
         this.initializeAnimations();
+        
+        // 初始化遮罩层
+        this.initOverlay();
+        
+        // 初始化比赛开始文本
+        this.initGameStartText();
     }
 
     private drawCourt() {
@@ -124,16 +148,18 @@ export class GameRenderer {
     private createPlayer(team: string, number: string): PIXI.Container {
         const player = new PIXI.Container();
 
-        // 球员图标
+        // 球员图标 - 增大尺寸并添加边框
         const icon = new PIXI.Graphics();
+        icon.lineStyle(2, 0xFFFFFF); // 添加白色边框
         icon.beginFill(team === 'home' ? 0xFF0000 : 0x0000FF);
-        icon.drawCircle(0, 0, 10);
+        icon.drawCircle(0, 0, 15); // 增大半径到15
         icon.endFill();
 
-        // 球员号码
+        // 球员号码 - 调整字体大小
         const text = new PIXI.Text(number, {
-            fontSize: 10,
-            fill: 0xFFFFFF
+            fontSize: 12,
+            fill: 0xFFFFFF,
+            fontWeight: 'bold'
         });
         text.anchor.set(0.5);
 
@@ -148,7 +174,8 @@ export class GameRenderer {
         this.animations.set(GameEventType.FREE_THROW_MADE, this.animateShot.bind(this));
         this.animations.set(GameEventType.REBOUND, this.animateRebound.bind(this));
         this.animations.set(GameEventType.BLOCK, this.animateBlock.bind(this));
-        // ... 添加更多动画
+        this.animations.set(GameEventType.FOUL, this.animateFoul.bind(this));
+        this.animations.set(GameEventType.TURNOVER, this.animateTurnover.bind(this));
     }
 
     private animateShot(event: GameEvent) {
@@ -156,59 +183,96 @@ export class GameRenderer {
         const startX = isHome ? 200 : 600;
         const endX = isHome ? 750 : 50;
 
-        // Kill any existing animations
-        gsap.killTweensOf(this.ball);
-
-        // Create a timeline for the shot animation
-        const tl = gsap.timeline();
-        
-        // Arc motion for the ball
-        tl.to(this.ball, {
+        gsap.to(this.ball, {
             duration: 1,
             x: endX,
             y: 200,
             ease: "power2.out",
             onComplete: () => {
-                // Reset ball position
-                gsap.set(this.ball, {
-                    x: 400,
-                    y: 200
-                });
+                // 重置球的位置
+                this.ball.position.set(400, 200);
             }
         });
     }
 
     private animateRebound(event: GameEvent) {
-        // Kill any existing animations
-        gsap.killTweensOf(this.ball);
-
         gsap.to(this.ball, {
             duration: 0.5,
-            y: "-=50",
-            yoyo: true,
-            repeat: 1,
+            x: (target: any) => {
+                return target === fouler.position ?
+                    this.INITIAL_POSITIONS[isHome ? 'home' : 'away'][0].x :
+                    this.INITIAL_POSITIONS[isHome ? 'away' : 'home'][0].x;
+            },
+            y: (target: any) => {
+                return target === fouler.position ?
+                    this.INITIAL_POSITIONS[isHome ? 'home' : 'away'][0].y :
+                    this.INITIAL_POSITIONS[isHome ? 'away' : 'home'][0].y;
+            },
             ease: "power1.inOut"
         });
     }
 
     private animateBlock(event: GameEvent) {
-        // Kill any existing animations
-        gsap.killTweensOf(this.ball);
-
         gsap.to(this.ball, {
             duration: 0.3,
-            y: "+=30",
-            x: event.team === 'home' ? "-=50" : "+=50",
-            ease: "power3.out"
+            x: (target: any) => {
+                if (target === this.ball) return 400;
+                const pos = target as PIXI.ObservablePoint;
+                if (pos === turnoverPlayer.position) {
+                    return this.INITIAL_POSITIONS[isHome ? 'home' : 'away'][0].x;
+                }
+                return this.INITIAL_POSITIONS[isHome ? 'away' : 'home'][0].x;
+            },
+            y: (target: any) => {
+                if (target === this.ball) return 225;
+                const pos = target as PIXI.ObservablePoint;
+                if (pos === turnoverPlayer.position) {
+                    return this.INITIAL_POSITIONS[isHome ? 'home' : 'away'][0].y;
+                }
+                return this.INITIAL_POSITIONS[isHome ? 'away' : 'home'][0].y;
+            },
+            rotation: 0,
+            ease: "power1.inOut",
+            delay: 0.2
         });
     }
 
     public updateGameState(state: GameState) {
-        // 更新球场状态
-        // 可以根据需要添加更多状态更新逻辑
+        // 清除现有球员
+        this.players.forEach(player => {
+            this.court.removeChild(player);
+        });
+        this.players.clear();
+
+        // 初始化主队球员，使用固定位置
+        for (let i = 0; i < 5; i++) {
+            const player = this.createPlayer('home', String(i + 1));
+            player.position.set(
+                this.INITIAL_POSITIONS.home[i].x,
+                this.INITIAL_POSITIONS.home[i].y
+            );
+            this.players.set(`home_${i}`, player);
+            this.court.addChild(player);
+        }
+
+        // 初始化客队球员，使用固定位置
+        for (let i = 0; i < 5; i++) {
+            const player = this.createPlayer('away', String(i + 1));
+            player.position.set(
+                this.INITIAL_POSITIONS.away[i].x,
+                this.INITIAL_POSITIONS.away[i].y
+            );
+            this.players.set(`away_${i}`, player);
+            this.court.addChild(player);
+        }
     }
 
     public playEvent(event: GameEvent) {
+        // 如果是第一个件，显示比赛开始文本
+        if (event.quarter === 1 && event.time === '12:00') {
+            this.showGameStart();
+        }
+        
         const animation = this.animations.get(event.type);
         if (animation) {
             animation(event);
@@ -224,5 +288,122 @@ export class GameRenderer {
         // Kill all animations before destroying
         gsap.killTweensOf(this.ball);
         this.app.destroy(true);
+    }
+
+    private initOverlay() {
+        // 创建全屏遮罩
+        this.overlay = new PIXI.Graphics();
+        this.overlay.beginFill(0x000000, 0.5);  // 黑色半透明
+        this.overlay.drawRect(0, 0, 800, 450);  // 覆盖整个画布
+        this.overlay.endFill();
+        this.overlay.alpha = 0;  // 初始透明
+        
+        // 遮罩添加到舞台最顶层
+        this.app.stage.addChild(this.overlay);
+    }
+
+    private initGameStartText() {
+        this.gameStartText = new PIXI.Text('比赛开始', {
+            fontFamily: '"华文行楷", "STXingkai", "楷体", "KaiTi", Arial',
+            fontSize: 72,
+            fill: ['#FF0000', '#FF4444'],
+            fontWeight: 'normal',
+            dropShadow: true,
+            dropShadowColor: 0x000000,
+            dropShadowBlur: 6,
+            dropShadowDistance: 3,
+            stroke: '#880000',
+            strokeThickness: 2,
+            letterSpacing: 4
+        });
+        
+        this.gameStartText.anchor.set(0.5);
+        this.gameStartText.position.set(400, 225);
+        this.gameStartText.alpha = 0;
+        
+        // 将文添加到舞台最顶层，确保在遮罩之上
+        this.app.stage.addChild(this.gameStartText);
+    }
+
+    public showGameStart() {
+        if (!this.gameStartText || !this.overlay) return;
+        
+        // 重置状态
+        this.gameStartText.alpha = 0;
+        this.gameStartText.scale.set(1);
+        this.overlay.alpha = 0;
+        
+        // 创建动画效果
+        const tl = gsap.timeline();
+        
+        // 首先让背景变暗
+        tl.to(this.overlay, {
+            alpha: 0.5,
+            duration: 0.3,
+            ease: "power2.out"
+        });
+        
+        // 然后显示文字
+        tl.to(this.gameStartText, {
+            alpha: 1,
+            duration: 0.5,
+            ease: "power2.out"
+        }, "-=0.2");  // 略微提前开始文字画
+        
+        // 停留一会后开始淡出
+        tl.to([this.gameStartText, this.overlay], {
+            alpha: 0,
+            scale: this.gameStartText.scale.x * 1.5,
+            duration: 1,
+            ease: "power2.in",
+            delay: 1
+        });
+    }
+
+    // 添加一个辅助方法来随机获取球员
+    private getRandomPlayer(team: 'home' | 'away'): PIXI.Container | undefined {
+        const teamPlayers = Array.from(this.players.entries())
+            .filter(([key]) => key.startsWith(team))
+            .map(([_, player]) => player);
+        
+        if (teamPlayers.length === 0) return undefined;
+        const randomIndex = Math.floor(Math.random() * teamPlayers.length);
+        return teamPlayers[randomIndex];
+    }
+
+    // 添加一个辅助方法来获取有效的随机位置
+    private getRandomPositionNearBall(
+        baseX: number, 
+        baseY: number, 
+        spread: number = 50,
+        isHome: boolean
+    ): {x: number, y: number} {
+        // 球场边界
+        const COURT_BOUNDS = {
+            left: 60,
+            right: 740,
+            top: 60,
+            bottom: 390
+        };
+
+        // 生成随机偏移
+        const getRandomOffset = () => (Math.random() - 0.5) * spread * 2;
+
+        // 尝试获取有效位置
+        let x = baseX + getRandomOffset();
+        let y = baseY + getRandomOffset();
+
+        // 确保位置在球场内
+        x = Math.max(COURT_BOUNDS.left + 20, Math.min(COURT_BOUNDS.right - 20, x));
+        y = Math.max(COURT_BOUNDS.top + 20, Math.min(COURT_BOUNDS.bottom - 20, y));
+
+        // 确保主队在左半场，客队在右半场
+        if (isHome && x > 400) {
+            x = 400 - (x - 400);
+        } else if (!isHome && x < 400) {
+            x = 400 + (400 - x);
+        }
+
+        return {x, y};
     }
 } 

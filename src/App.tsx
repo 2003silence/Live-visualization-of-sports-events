@@ -466,6 +466,15 @@ const App: React.FC = () => {
     };
 
     const handlePlay = () => {
+        // 如果是在开始位置，显示开场动画
+        if (currentEventIndex === 0) {
+            const gameViewer = document.querySelector('.game-viewer');
+            const renderer = (gameViewer as any)?.__pixi;
+            if (renderer) {
+                renderer.showGameStart();
+            }
+        }
+        
         setIsPlaying(true);
         playIntervalRef.current = setInterval(() => {
             setCurrentEventIndex(prev => {

@@ -14,6 +14,7 @@ export const GameViewer: React.FC<GameViewerProps> = ({ gameState, currentEventI
     useEffect(() => {
         if (containerRef.current && !rendererRef.current) {
             rendererRef.current = new GameRenderer(containerRef.current);
+            (containerRef.current as any).__pixi = rendererRef.current;
         }
     }, []);
 
@@ -22,6 +23,13 @@ export const GameViewer: React.FC<GameViewerProps> = ({ gameState, currentEventI
             rendererRef.current.updateGameState(gameState);
         }
     }, [gameState]);
+
+    useEffect(() => {
+        if (rendererRef.current && gameState && currentEventIndex >= 0 && currentEventIndex < gameState.events.length) {
+            const currentEvent = gameState.events[currentEventIndex];
+            rendererRef.current.playEvent(currentEvent);
+        }
+    }, [currentEventIndex, gameState]);
 
     return <div ref={containerRef} className="game-viewer" />;
 }; 

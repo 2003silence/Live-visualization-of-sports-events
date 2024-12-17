@@ -47,11 +47,11 @@ const SpeedControl = styled.div`
     margin: 0 20px;
 `;
 
-const SpeedButton = styled(Button)<{ active: boolean }>`
-    background: ${props => props.active ? '#28a745' : '#6c757d'};
+const SpeedButton = styled(Button)<{ $active: boolean }>`
+    background: ${props => props.$active ? '#28a745' : '#6c757d'};
     padding: 4px 8px;
     &:hover {
-        background: ${props => props.active ? '#218838' : '#5a6268'};
+        background: ${props => props.$active ? '#218838' : '#5a6268'};
     }
 `;
 
@@ -138,21 +138,21 @@ export const GameControl: React.FC<GameControlProps> = ({
                     <span>播放速度：</span>
                     <SpeedButton 
                         onClick={() => onSpeedChange(0.5)} 
-                        active={currentSpeed === 0.5}
+                        $active={currentSpeed === 0.5}
                         title="0.5倍速"
                     >
                         0.5x
                     </SpeedButton>
                     <SpeedButton 
                         onClick={() => onSpeedChange(1)} 
-                        active={currentSpeed === 1}
+                        $active={currentSpeed === 1}
                         title="正常速度"
                     >
                         1x
                     </SpeedButton>
                     <SpeedButton 
                         onClick={() => onSpeedChange(2)} 
-                        active={currentSpeed === 2}
+                        $active={currentSpeed === 2}
                         title="2倍速"
                     >
                         2x

@@ -1,0 +1,26 @@
+@startuml 用例图
+left to right direction
+skinparam packageStyle rectangle
+
+actor 观众
+actor 系统管理员
+
+rectangle "体育赛事直播可视化系统" {
+  usecase "观看比赛回放" as UC1
+  usecase "控制播放进度" as UC2
+  usecase "调整播放速度" as UC3
+  usecase "查看技术统计" as UC4
+  usecase "查看球员数据" as UC5
+  usecase "管理比赛数据" as UC6
+  usecase "系统维护" as UC7
+  
+  观众 --> UC1
+  观众 --> UC2
+  观众 --> UC3
+  观众 --> UC4
+  观众 --> UC5
+  
+  系统管理员 --> UC6
+  系统管理员 --> UC7
+}
+@enduml 

@@ -149,6 +149,7 @@ export class GameRenderer {
         this.animations.set(GameEventType.STEAL, this.animateSteal.bind(this));
         this.animations.set(GameEventType.TURNOVER, this.animateTurnover.bind(this));
         this.animations.set(GameEventType.FOUL, this.animateFoul.bind(this));
+        this.animations.set(GameEventType.SUBSTITUTION, this.animateSubstitution.bind(this));
     }
 
     private animateShot(event: GameEvent) {
@@ -383,38 +384,169 @@ export class GameRenderer {
 
     private animateFreeThrow(event: GameEvent) {
         const isHome = event.team === 'home';
-        const endX = isHome ? 750 : 50;
+        // 修改进攻方向：主队在右侧时向左进攻，在左侧时向右进攻
+        const shootingToRight = (isHome !== this.isHomeOnRight);
+        const endX = shootingToRight ? 750 : 50;
+        const startX = shootingToRight ? 550 : 250;
         
         gsap.killTweensOf(this.ball);
+        const player = this.players.get(`${event.team}_0`);
+        if (player) {
+            gsap.killTweensOf(player);
+        }
         
-        gsap.to(this.ball, {
-            duration: 0.8,
-            x: endX,
-            y: 225,
-            ease: "power2.inOut"
-        });
+        const tl = gsap.timeline();
+        
+        if (player && player instanceof PIXI.Container) {
+            // 第一步：球员移动到罚球线
+            tl.to(player, {
+                duration: 0.5,
+                x: startX,
+                y: 225,
+                ease: "power2.out"
+            });
+
+            // 设置球的初始位置
+            gsap.set(this.ball, {
+                x: startX,
+                y: 225
+            });
+
+            // 第二步：球员准备动作（轻微下蹲）
+            tl.to(player.scale, {
+                duration: 0.3,
+                y: 0.9,
+                ease: "power2.out"
+            })
+            .to(player.scale, {
+                duration: 0.2,
+                y: 1,
+                ease: "power2.in"
+            });
+
+            // 第三步：投篮动作
+            tl.to(this.ball, {
+                duration: 1,
+                motionPath: {
+                    path: [
+                        { x: startX, y: 225 },
+                        { x: (startX + endX) / 2, y: 150 }, // 抛��最高点
+                        { x: endX, y: 225 }
+                    ],
+                    curviness: 1.5,
+                    autoRotate: true
+                },
+                ease: "power2.inOut",
+                onStart: () => {
+                    this.showActionText('罚球命中！', '#32CD32', 1.2);
+                }
+            });
+
+            // 最后：球和球员回到原位
+            tl.to(this.ball, {
+                duration: 0.5,
+                x: 400,
+                y: 225,
+                ease: "power2.inOut"
+            })
+            .to(player, {
+                duration: 0.5,
+                x: shootingToRight ? 550 : 250,
+                y: 225,
+                ease: "power2.inOut"
+            }, "-=0.5");
+        }
     }
 
     private animateMissedFreeThrow(event: GameEvent) {
         const isHome = event.team === 'home';
-        const endX = isHome ? 750 : 50;
+        // 修改进攻方向：主队在右侧时向左进攻，在左侧时向右进攻
+        const shootingToRight = (isHome !== this.isHomeOnRight);
+        const endX = shootingToRight ? 750 : 50;
+        const startX = shootingToRight ? 550 : 250;
         
         gsap.killTweensOf(this.ball);
+        const player = this.players.get(`${event.team}_0`);
+        if (player) {
+            gsap.killTweensOf(player);
+        }
         
         const tl = gsap.timeline();
         
-        tl.to(this.ball, {
-            duration: 0.8,
-            x: endX,
-            y: 225,
-            ease: "power2.inOut"
-        })
-        .to(this.ball, {
-            duration: 0.3,
-            x: isHome ? "-=20" : "+=20",
-            y: "+=15",
-            ease: "power1.out"
-        });
+        if (player && player instanceof PIXI.Container) {
+            // 第一步：球员移动到罚球线
+            tl.to(player, {
+                duration: 0.5,
+                x: startX,
+                y: 225,
+                ease: "power2.out"
+            });
+
+            // 设置球的初始位置
+            gsap.set(this.ball, {
+                x: startX,
+                y: 225
+            });
+
+            // 第二步：球员准备动作（轻微下蹲）
+            tl.to(player.scale, {
+                duration: 0.3,
+                y: 0.9,
+                ease: "power2.out"
+            })
+            .to(player.scale, {
+                duration: 0.2,
+                y: 1,
+                ease: "power2.in"
+            });
+
+            // 第三步：投篮动作（稍微偏离）
+            tl.to(this.ball, {
+                duration: 1,
+                motionPath: {
+                    path: [
+                        { x: startX, y: 225 },
+                        { x: (startX + endX) / 2, y: 150 },
+                        { x: endX + (shootingToRight ? 20 : -20), y: 225 } // 偏离篮筐
+                    ],
+                    curviness: 1.5,
+                    autoRotate: true
+                },
+                ease: "power2.inOut",
+                onStart: () => {
+                    this.showActionText('罚球不中！', '#FF6347');
+                }
+            });
+
+            // 第四步：球碰撞篮筐后反弹
+            tl.to(this.ball, {
+                duration: 0.3,
+                x: endX + (shootingToRight ? -30 : 30),
+                y: 205,
+                rotation: shootingToRight ? -Math.PI / 4 : Math.PI / 4,
+                ease: "power1.out"
+            })
+            .to(this.ball, {
+                duration: 0.2,
+                y: "+=20",
+                rotation: 0,
+                ease: "bounce.out"
+            });
+
+            // 最后：球和球员回到原位
+            tl.to(this.ball, {
+                duration: 0.5,
+                x: 400,
+                y: 225,
+                ease: "power2.inOut"
+            })
+            .to(player, {
+                duration: 0.5,
+                x: shootingToRight ? 550 : 250,
+                y: 225,
+                ease: "power2.inOut"
+            }, "-=0.5");
+        }
     }
 
     private animateSteal(event: GameEvent) {
@@ -441,7 +573,7 @@ export class GameRenderer {
                 ease: "power2.out"
             });
 
-            // 第二步：��球球员移动，对手跟随
+            // 第二步：球球员移动，对手跟随
             tl.to([this.ball, player], {
                 duration: 0.4,
                 x: isHome ? "+=30" : "-=30",
@@ -628,7 +760,7 @@ export class GameRenderer {
                 ease: "bounce.out"
             });
 
-            // 最后：球员和球回到原位
+            // 最后球员和球回到原位
             tl.to(this.ball, {
                 duration: 0.5,
                 x: 400,
@@ -717,7 +849,7 @@ export class GameRenderer {
                 x: `+=${10 * reboundDirection}`, // 抢板时略微向外移动
                 ease: "power2.out",
                 onStart: () => {
-                    this.showActionText('篮板球！', '#4169E1');
+                    this.showActionText('抢到篮板！', '#4169E1');
                 }
             })
             .to([this.ball, player], {
@@ -729,7 +861,7 @@ export class GameRenderer {
             // 第四步：球员带球后撤
             tl.to([this.ball, player], {
                 duration: 0.4,
-                x: `+=${30 * reboundDirection}`, // 后撤方向与球队相关
+                x: `+=${30 * reboundDirection}`,
                 ease: "power1.out"
             });
 
@@ -783,7 +915,7 @@ export class GameRenderer {
         const tl = gsap.timeline();
         
         if (player && player instanceof PIXI.Container && opponent) {
-            // 第一步：双方球员移动到位，防守者在球附近随机位置
+            // 第一步：双方球员移动到位置，防守者在球附近随机位置
             tl.to(player, {
                 duration: 0.3,
                 x: this.ball.x - (shootingToRight ? -20 : 20),
@@ -1248,7 +1380,7 @@ export class GameRenderer {
         });
     }
 
-    // 添加获取随机球员的辅助方法
+    // 添加获取随机球���的辅助方法
     private getRandomPlayer(team: string): PIXI.Container | undefined {
         // 收集指定队伍的所有球员
         const teamPlayers: PIXI.Container[] = [];
@@ -1334,5 +1466,117 @@ export class GameRenderer {
             x: this.ball.x + r * Math.cos(angle),
             y: this.ball.y + r * Math.sin(angle)
         };
+    }
+
+    // 添加换人动画方法
+    private animateSubstitution(event: GameEvent) {
+        if (!event.description) return;
+        
+        // 从描述中提取换人信息
+        const subMatch = event.description.match(/换人：\s*([^替]+?)\s*替换\s*([^替]+)$/);
+        if (!subMatch) return;
+        
+        const [_, inPlayerName, outPlayerName] = subMatch;
+        const isHome = event.team === 'home';
+        
+        // 获取换入和换出的球员
+        const inPlayer = this.getPlayerByName(event.team, inPlayerName.trim());
+        const outPlayer = this.getPlayerByName(event.team, outPlayerName.trim());
+        
+        if (!inPlayer || !outPlayer) return;
+        
+        gsap.killTweensOf(inPlayer);
+        gsap.killTweensOf(outPlayer);
+        
+        const tl = gsap.timeline();
+        
+        // 创建换人文字提示
+        const style = new PIXI.TextStyle({
+            fontFamily: 'Arial',
+            fontSize: 16,
+            fill: '#FFFFFF',
+            stroke: '#000000',
+            strokeThickness: 2
+        });
+        
+        const subText = new PIXI.Text(`${outPlayerName} ↔ ${inPlayerName}`, style);
+        subText.anchor.set(0.5);
+        subText.position.set(400, 30);
+        subText.alpha = 0;
+        this.court.addChild(subText);
+        
+        // 设置换入球员的初始位置（在场边）
+        const sidelineX = isHome ? 50 : 750;
+        gsap.set(inPlayer, {
+            x: sidelineX,
+            y: 50  // 在场地顶部边线
+        });
+        
+        // 动画序列
+        tl
+        // 显示换人文字
+        .to(subText, {
+            alpha: 1,
+            duration: 0.3,
+            y: 40,
+            ease: "power2.out"
+        })
+        
+        // 换出球员移动到场边
+        .to(outPlayer, {
+            duration: 0.8,
+            x: sidelineX,
+            y: 400, // 移动到场地底部边线
+            ease: "power2.inOut"
+        }, "-=0.2")
+        
+        // 换入球员从场边进入
+        .to(inPlayer, {
+            duration: 0.8,
+            x: isHome ? (this.isHomeOnRight ? 550 : 250) : (this.isHomeOnRight ? 250 : 550),
+            y: 225,
+            ease: "power2.inOut"
+        }, "-=0.4")
+        
+        // 淡出换人文字
+        .to(subText, {
+            alpha: 0,
+            duration: 0.3,
+            y: 30,
+            ease: "power2.in",
+            onComplete: () => {
+                if (subText.parent) {
+                    subText.parent.removeChild(subText);
+                }
+            }
+        })
+        
+        // 最后重置所有球员位置
+        .to({}, {
+            duration: 0.1,
+            onComplete: () => {
+                this.resetPlayers();
+            }
+        });
+    }
+
+    // 修改通过名字获取球员的辅助方法
+    private getPlayerByName(team: string, playerName: string): PIXI.Container | undefined {
+        // 遍历该队所有球员查找匹配的名字
+        for (let i = 0; i < 5; i++) {
+            const player = this.players.get(`${team}_${i}`);
+            if (player) {
+                // 获取球员号码文本
+                const numberText = player.children[1] as PIXI.Text;
+                // 使用号码作为标识符来匹配球员
+                // 这里我们假设球员的索引就是他们的号码
+                if (numberText.text === (i + 1).toString()) {
+                    return player;
+                }
+            }
+        }
+        
+        // 如果没找到匹配的球员，返回该队的第一个可用球员
+        return this.getRandomPlayer(team);
     }
 } 

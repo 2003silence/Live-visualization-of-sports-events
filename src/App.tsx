@@ -248,7 +248,7 @@ const App: React.FC = () => {
 
         // 处理每个事件
         events.forEach((event) => {
-            // 先更新所有在场球员的时间
+            // 先更新所有在场���员的时间
             updatePlayersTime(event.time);
             
             // 更新当前节数
@@ -276,7 +276,7 @@ const App: React.FC = () => {
             }
         });
 
-        // 将秒数转换为分钟��返回
+        // 将秒数转换为分钟返回
         const minutesPlayTime: { [key: string]: number } = {};
         Object.entries(playTime).forEach(([key, seconds]) => {
             minutesPlayTime[key] = Math.round(seconds / 60);
@@ -306,7 +306,7 @@ const App: React.FC = () => {
                 const [_, inPlayer, outPlayer] = subMatch;
                 const team = event.team === 'home' ? state.homeTeam : state.awayTeam;
                 
-                // 找到换��和换出的球员
+                // 找到换人和换出的球员
                 const inPlayerObj = team.players.find(p => p.name === inPlayer.trim());
                 const outPlayerObj = team.players.find(p => p.name === outPlayer.trim());
 
@@ -590,6 +590,11 @@ const App: React.FC = () => {
         });
 
         setGameState(newState);
+        
+        // 确保 GameViewer 组件收到更新后的状态
+        if (gameViewerRef.current) {
+            gameViewerRef.current.updateGameState(newState);
+        }
     }, [currentEventIndex]);
 
     // 添加初始化的 useEffect

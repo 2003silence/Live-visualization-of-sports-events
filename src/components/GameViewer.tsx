@@ -9,6 +9,7 @@ interface GameViewerProps {
 
 export interface GameViewerRef {
     showStartText: () => void;
+    updateGameState: (state: GameState) => void;
 }
 
 export const GameViewer = forwardRef<GameViewerRef, GameViewerProps>(({ gameState, currentEventIndex }, ref) => {
@@ -46,6 +47,11 @@ export const GameViewer = forwardRef<GameViewerRef, GameViewerProps>(({ gameStat
         showStartText: () => {
             if (rendererRef.current) {
                 rendererRef.current.showGameStartText();
+            }
+        },
+        updateGameState: (state: GameState) => {
+            if (rendererRef.current) {
+                rendererRef.current.updateGameState(state);
             }
         }
     }));

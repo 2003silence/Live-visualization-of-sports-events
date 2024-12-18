@@ -17,6 +17,8 @@ export class GameRenderer {
     private players: Map<string, PIXI.Container>;
     private animations: Map<GameEventType, (event: GameEvent) => void>;
     private gameStartText: PIXI.Text | null = null;
+    private currentQuarter: number = 1;
+    private isHomeOnRight: boolean = true;
 
     constructor(container: HTMLDivElement) {
         // 创建PIXI应用
@@ -151,8 +153,10 @@ export class GameRenderer {
 
     private animateShot(event: GameEvent) {
         const isHome = event.team === 'home';
-        const endX = isHome ? 750 : 50;  // 篮筐位置
-        const startX = isHome ? 250 : 550;  // 起始位置
+        // 修改进攻方向：主队在右侧时向左进攻，在左侧时向右进攻
+        const shootingToRight = (isHome !== this.isHomeOnRight);
+        const endX = shootingToRight ? 750 : 50;
+        const startX = shootingToRight ? 550 : 250;
         const isThree = event.type === GameEventType.THREE_POINTS_MADE;
         
         gsap.killTweensOf(this.ball);
@@ -173,7 +177,7 @@ export class GameRenderer {
             // 第一步：球员移动到球的位置
             tl.to(player, {
                 duration: 0.3,
-                x: startX - (isHome ? -20 : 20),
+                x: startX - (shootingToRight ? -20 : 20),
                 y: 225,
                 ease: "power2.out"
             });
@@ -182,7 +186,7 @@ export class GameRenderer {
             let shootingSpotX, shootingSpotY;
             if (isThree) {
                 // 三分球时，站在对方三分线上
-                const oppositeThreePointX = isHome ? 440 : 360;
+                const oppositeThreePointX = shootingToRight ? 440 : 360;
                 shootingSpotX = oppositeThreePointX;
                 shootingSpotY = 225;
 
@@ -215,7 +219,7 @@ export class GameRenderer {
                 });
             } else {
                 // 二分球时的位置和动作
-                shootingSpotX = isHome ? 550 : 250;
+                shootingSpotX = shootingToRight ? 550 : 250;
                 shootingSpotY = 225;
 
                 // 球员和球一起移动到投篮点并完成投篮
@@ -249,7 +253,7 @@ export class GameRenderer {
             })
             .to(player, {
                 duration: 0.5,
-                x: isHome ? 250 : 550,
+                x: shootingToRight ? 550 : 250,
                 y: 225,
                 ease: "power2.inOut"
             }, "-=0.5");
@@ -258,8 +262,10 @@ export class GameRenderer {
 
     private animateMissedShot(event: GameEvent) {
         const isHome = event.team === 'home';
-        const endX = isHome ? 750 : 50;  // 篮筐位置
-        const startX = isHome ? 250 : 550;  // 起始位置
+        // 修改进攻方向：主队在右侧时向左进攻，在左侧时向右进攻
+        const shootingToRight = (isHome !== this.isHomeOnRight);
+        const endX = shootingToRight ? 750 : 50;
+        const startX = shootingToRight ? 550 : 250;
         const isThree = event.type === GameEventType.THREE_POINTS_MISSED;
         
         gsap.killTweensOf(this.ball);
@@ -280,7 +286,7 @@ export class GameRenderer {
             // 第一步：球员移动到球的位置
             tl.to(player, {
                 duration: 0.3,
-                x: startX - (isHome ? -20 : 20),
+                x: startX - (shootingToRight ? -20 : 20),
                 y: 225,
                 ease: "power2.out"
             });
@@ -289,12 +295,12 @@ export class GameRenderer {
             let shootingSpotX, shootingSpotY;
             if (isThree) {
                 // 三分球时，站在对方三分线上
-                const oppositeThreePointX = isHome ? 440 : 360; // 对方三分线圆弧中心
+                const oppositeThreePointX = shootingToRight ? 440 : 360;
                 shootingSpotX = oppositeThreePointX;
                 shootingSpotY = 225;
 
                 // 球员和球一起移动到三分线
-                tl.to([this.ball, player!], {
+                tl.to([this.ball, player], {
                     duration: 0.4,
                     x: shootingSpotX,
                     y: shootingSpotY,
@@ -322,17 +328,17 @@ export class GameRenderer {
                 })
                 .to(this.ball, {
                     duration: 0.3,
-                    x: isHome ? endX - 30 : endX + 30,
+                    x: shootingToRight ? endX - 30 : endX + 30,
                     y: 205,
                     ease: "power1.out"
                 });
             } else {
                 // 二分球时的位置和动作
-                shootingSpotX = isHome ? 650 : 150;
+                shootingSpotX = shootingToRight ? 550 : 250;
                 shootingSpotY = 225;
 
                 // 球员和球一起移动到投篮点并完成投篮
-                tl.to([this.ball, player!], {
+                tl.to([this.ball, player], {
                     duration: 0.4,
                     x: shootingSpotX,
                     y: shootingSpotY,
@@ -353,7 +359,7 @@ export class GameRenderer {
                 })
                 .to(this.ball, {
                     duration: 0.3,
-                    x: isHome ? endX - 30 : endX + 30,
+                    x: shootingToRight ? endX - 30 : endX + 30,
                     y: 205,
                     ease: "power1.out"
                 });
@@ -368,7 +374,7 @@ export class GameRenderer {
             })
             .to(player, {
                 duration: 0.5,
-                x: isHome ? 250 : 550,
+                x: shootingToRight ? 550 : 250,
                 y: 225,
                 ease: "power2.inOut"
             }, "-=0.5");
@@ -431,11 +437,11 @@ export class GameRenderer {
             // 第一步：对方球员移动到球附近的随机位置准备抢断
             tl.to(opponent, {
                 duration: 0.3,
-                ...this.getRandomPositionAroundBall(25, isHome),
+                ...this.getRandomPositionAroundBall(25),
                 ease: "power2.out"
             });
 
-            // 第二步：持球球员移动，对手跟随
+            // 第二步：��球球员移动，对手跟随
             tl.to([this.ball, player], {
                 duration: 0.4,
                 x: isHome ? "+=30" : "-=30",
@@ -443,12 +449,12 @@ export class GameRenderer {
             })
             .to(opponent, {
                 duration: 0.4,
-                ...this.getRandomPositionAroundBall(20, isHome), // 更近的距离
+                ...this.getRandomPositionAroundBall(20), // 更近的距离
                 ease: "power1.inOut"
             }, "-=0.4");
 
             // 第三步：抢断瞬间
-            const stealPos = this.getRandomPositionAroundBall(15, isHome); // 更近的距离
+            const stealPos = this.getRandomPositionAroundBall(15); // 更近的距离
             tl.to(opponent, {
                 duration: 0.2,
                 ...stealPos,
@@ -514,7 +520,7 @@ export class GameRenderer {
             // 第一步：对方球员移动到球附近的随机位置
             tl.to(opponent, {
                 duration: 0.3,
-                ...this.getRandomPositionAroundBall(25, isHome),
+                ...this.getRandomPositionAroundBall(25),
                 ease: "power2.out"
             });
 
@@ -526,12 +532,12 @@ export class GameRenderer {
             })
             .to(opponent, {
                 duration: 0.4,
-                ...this.getRandomPositionAroundBall(25, isHome),
+                ...this.getRandomPositionAroundBall(25),
                 ease: "power1.inOut"
             }, "-=0.4");
 
             // 第三步：失误发生时对手再次移动
-            const turnoverPos = this.getRandomPositionAroundBall(25, isHome);
+            const turnoverPos = this.getRandomPositionAroundBall(25);
             tl.to(opponent, {
                 duration: 0.3,
                 ...turnoverPos,
@@ -570,6 +576,8 @@ export class GameRenderer {
 
     private animateFoul(event: GameEvent) {
         const isHome = event.team === 'home';
+        // 修改进攻方向：主队在右侧时向左进攻，在左侧时向右进攻
+        const shootingToRight = (isHome !== this.isHomeOnRight);
         
         gsap.killTweensOf(this.ball);
         const player = this.getRandomPlayer(event.team);
@@ -583,7 +591,7 @@ export class GameRenderer {
             // 第一步：球员移动到球的位置
             tl.to(player, {
                 duration: 0.3,
-                x: this.ball.x - (isHome ? -20 : 20),
+                x: this.ball.x - (shootingToRight ? -20 : 20),
                 y: this.ball.y,
                 ease: "power2.out"
             });
@@ -662,15 +670,17 @@ export class GameRenderer {
         const isHome = event.team === 'home';
         const ballX = this.ball.x;
         
-        // 判断球是否在篮筐附近
-        const isNearHomeBasket = ballX > 700; // 主队篮筐在右侧 (750)
-        const isNearAwayBasket = ballX < 100; // 客队篮筐在左侧 (50)
+        // 修改进攻方向：主队在右侧时向左进攻，在左侧时向右进攻
+        const shootingToRight = (isHome !== this.isHomeOnRight);
+        const targetBasketX = shootingToRight ? 750 : 50;
         
-        // 如果球不在正确的篮筐位置，先移动到正确位置
-        if (isHome && !isNearAwayBasket) {
-            this.ball.x = 80; // 移动到客队篮筐附近
-        } else if (!isHome && !isNearHomeBasket) {
-            this.ball.x = 720; // 移动到主队篮筐附近
+        // 判断球是否在正确的篮筐附近
+        const isNearTargetBasket = Math.abs(ballX - targetBasketX) < 50;
+        
+        // 如果球不在正确的篮筐位置，移动到正确位置
+        if (!isNearTargetBasket) {
+            this.ball.x = shootingToRight ? targetBasketX - 30 : targetBasketX + 30;
+            this.ball.y = 225; // 确保在篮筐高度
         }
         
         gsap.killTweensOf(this.ball);
@@ -683,7 +693,7 @@ export class GameRenderer {
         
         if (player && player instanceof PIXI.Container) {
             // 第一步：球弹起（根据在哪个篮筐调整方向）
-            const reboundDirection = isHome ? -1 : 1; // 主队抢板往左，客队抢板往右
+            const reboundDirection = shootingToRight ? -1 : 1;
             
             tl.to(this.ball, {
                 duration: 0.4,
@@ -695,7 +705,7 @@ export class GameRenderer {
             // 第二步：球员快速移动到球的位置准备抢板
             tl.to(player, {
                 duration: 0.3,
-                x: this.ball.x - (isHome ? -20 : 20),
+                x: this.ball.x - (shootingToRight ? -20 : 20),
                 y: this.ball.y + 40,
                 ease: "power2.out"
             }, "-=0.2");
@@ -746,16 +756,16 @@ export class GameRenderer {
         const isHome = event.team === 'home';
         const ballX = this.ball.x;
         
-        // 判断球是否在篮筐附近
-        const isNearHomeBasket = ballX > 700; // 主队篮筐在右侧 (750)
-        const isNearAwayBasket = ballX < 100; // 客队篮筐在左侧 (50)
+        // 修改进攻方向：主队在右侧时向左进攻，在左侧时向右进攻
+        const shootingToRight = (isHome !== this.isHomeOnRight);
+        const targetBasketX = shootingToRight ? 750 : 50;
         
-        // 如果球不在正确的篮筐位置，先移动到正确位置
-        if (isHome && !isNearAwayBasket) {
-            this.ball.x = 80; // 移动到客队篮筐附近
-            this.ball.y = 225; // 确保在篮筐高度
-        } else if (!isHome && !isNearHomeBasket) {
-            this.ball.x = 720; // 移动到主队篮筐附近
+        // 判断球是否在正确的篮筐附近
+        const isNearTargetBasket = Math.abs(ballX - targetBasketX) < 50;  // 使用 targetBasketX 来判断
+        
+        // 如果球不在正确的篮筐位置，移动到正确位置
+        if (!isNearTargetBasket) {
+            this.ball.x = shootingToRight ? targetBasketX - 30 : targetBasketX + 30;  // 使用 targetBasketX 来设置位置
             this.ball.y = 225; // 确保在篮筐高度
         }
         
@@ -776,13 +786,13 @@ export class GameRenderer {
             // 第一步：双方球员移动到位，防守者在球附近随机位置
             tl.to(player, {
                 duration: 0.3,
-                x: this.ball.x - (isHome ? -20 : 20),
+                x: this.ball.x - (shootingToRight ? -20 : 20),
                 y: this.ball.y,
                 ease: "power2.out"
             })
             .to(opponent, {
                 duration: 0.3,
-                ...this.getRandomPositionAroundBall(25, !isHome),
+                ...this.getRandomPositionAroundBall(25),
                 ease: "power2.out"
             }, "-=0.3");
 
@@ -796,8 +806,8 @@ export class GameRenderer {
                 }
             });
 
-            // 第三步：球被盖出去（方向与球队相反）
-            const blockDirection = isHome ? -1 : 1;
+            // 第三步：球被盖出去（方向与投篮方向相反）
+            const blockDirection = shootingToRight ? -1 : 1;
             tl.to(this.ball, {
                 duration: 0.3,
                 y: "-=20",
@@ -813,7 +823,7 @@ export class GameRenderer {
                 ease: "bounce.out"
             });
 
-            // 最后：所有球员回到原位（使用 resetPlayers）
+            // 最后：所有球员回到原位
             tl.to(this.ball, {
                 duration: 0.5,
                 x: 400,
@@ -827,9 +837,165 @@ export class GameRenderer {
         }
     }
 
-    public updateGameState(_state: GameState) {
-        // 更新球场状态
-        // 可以根据需要添加更多状态更新逻辑
+    public updateGameState(state: GameState) {
+        // 检查节数是否变化
+        if (state.quarter !== this.currentQuarter) {
+            this.currentQuarter = state.quarter;
+            this.switchSides();
+        }
+    }
+
+    private switchSides() {
+        this.isHomeOnRight = !this.isHomeOnRight;
+        
+        // 创建半透明黑色背景
+        const overlay = new PIXI.Graphics();
+        overlay.beginFill(0x000000, 0.5);
+        overlay.drawRect(0, 0, this.app.screen.width, this.app.screen.height);
+        overlay.endFill();
+        overlay.alpha = 0;
+        this.court.addChild(overlay);
+
+        // 创建换场文字样式
+        const style = new PIXI.TextStyle({
+            fontFamily: 'STKaiti, Kaiti, cursive',
+            fontSize: 36,
+            fontWeight: 'bold',
+            fill: '#FF0000',
+            stroke: '#FFD700',
+            strokeThickness: 4,
+            dropShadow: true,
+            dropShadowColor: '#000000',
+            dropShadowBlur: 4,
+            dropShadowAngle: Math.PI / 6,
+            dropShadowDistance: 4,
+            align: 'center'
+        });
+
+        // 分别创建两行文字
+        const quarterEndText = new PIXI.Text(`第${this.currentQuarter-1}节结束`, style);
+        const switchSidesText = new PIXI.Text('现中场换场', style);
+
+        // 设置文字锚点和位置
+        quarterEndText.anchor.set(0.5);
+        switchSidesText.anchor.set(0.5);
+
+        // 将两行文字放在一个容器中
+        const textContainer = new PIXI.Container();
+        textContainer.addChild(quarterEndText);
+        textContainer.addChild(switchSidesText);
+
+        // 设置两行文字的相对位置
+        quarterEndText.position.set(0, -25);
+        switchSidesText.position.set(0, 25);
+
+        // 设置容器的位置和初始状态
+        textContainer.position.set(
+            this.app.screen.width / 2,
+            this.app.screen.height / 2
+        );
+        textContainer.alpha = 0;
+        textContainer.scale.set(0.3);
+        this.court.addChild(textContainer);
+
+        // 定义场地两侧的位置
+        const leftPositions = [
+            { x: 150, y: 125 },
+            { x: 150, y: 225 },
+            { x: 150, y: 325 },
+            { x: 250, y: 175 },
+            { x: 250, y: 275 }
+        ];
+
+        const rightPositions = [
+            { x: 650, y: 125 },
+            { x: 650, y: 225 },
+            { x: 650, y: 325 },
+            { x: 550, y: 175 },
+            { x: 550, y: 275 }
+        ];
+
+        // 创建动画时间轴
+        const tl = gsap.timeline();
+
+        // 背景渐入和文字动画
+        tl.to(overlay, {
+            alpha: 0.5,
+            duration: 0.4,
+            ease: "power2.inOut"
+        })
+        .to(textContainer, {
+            alpha: 1,
+            duration: 0.3,
+            ease: "power2.in"
+        }, "-=0.2")
+        .to(textContainer.scale, {
+            x: 1.2,
+            y: 1.2,
+            duration: 0.7,
+            ease: "back.out(1.7)"
+        }, "-=0.3")
+        .to(textContainer.scale, {
+            x: 1,
+            y: 1,
+            duration: 0.4,
+            ease: "power2.out"
+        });
+
+        // 球员移动动画
+        const playerMoveDuration = 1.2;
+        
+        // 主队球员移动
+        for (let i = 0; i < 5; i++) {
+            const player = this.players.get(`home_${i}`);
+            if (player) {
+                const targetPos = this.isHomeOnRight ? rightPositions[i] : leftPositions[i];
+                tl.to(player, {
+                    duration: playerMoveDuration,
+                    x: targetPos.x,
+                    y: targetPos.y,
+                    ease: "power2.inOut"
+                }, "-=1.1");
+            }
+        }
+
+        // 客队球员移动
+        for (let i = 0; i < 5; i++) {
+            const player = this.players.get(`away_${i}`);
+            if (player) {
+                const targetPos = this.isHomeOnRight ? leftPositions[i] : rightPositions[i];
+                tl.to(player, {
+                    duration: playerMoveDuration,
+                    x: targetPos.x,
+                    y: targetPos.y,
+                    ease: "power2.inOut"
+                }, "-=1.1");
+            }
+        }
+
+        // 球的移动
+        tl.to(this.ball, {
+            duration: 0.5,
+            x: 400,
+            y: 225,
+            ease: "power2.inOut"
+        }, "-=0.5");
+
+        // 文字和背景淡出
+        tl.to([textContainer, overlay], {
+            alpha: 0,
+            duration: 0.4,
+            ease: "power2.inOut",
+            delay: 0.5,
+            onComplete: () => {
+                if (textContainer.parent) {
+                    textContainer.parent.removeChild(textContainer);
+                }
+                if (overlay.parent) {
+                    overlay.parent.removeChild(overlay);
+                }
+            }
+        });
     }
 
     public playEvent(event: GameEvent) {
@@ -858,8 +1024,8 @@ export class GameRenderer {
     }
 
     private createPlayers() {
-        // 创建主队球员
-        const homePositions = [
+        // 定义初始位置
+        const leftPositions = [
             { x: 150, y: 125 },
             { x: 150, y: 225 },
             { x: 150, y: 325 },
@@ -867,14 +1033,17 @@ export class GameRenderer {
             { x: 250, y: 275 }
         ];
 
-        // 创建客队球员
-        const awayPositions = [
+        const rightPositions = [
             { x: 650, y: 125 },
             { x: 650, y: 225 },
             { x: 650, y: 325 },
             { x: 550, y: 175 },
             { x: 550, y: 275 }
         ];
+
+        // 根据初始方向确定主客队位置
+        const homePositions = this.isHomeOnRight ? rightPositions : leftPositions;
+        const awayPositions = this.isHomeOnRight ? leftPositions : rightPositions;
 
         // 创建主队球员
         homePositions.forEach((pos, index) => {
@@ -915,7 +1084,7 @@ export class GameRenderer {
         return player;
     }
 
-    // 添��一个方法更新球员位置
+    // 添加一个方法更新球员位置
     public updatePlayerPositions(positions: { [key: string]: { x: number, y: number } }) {
         Object.entries(positions).forEach(([playerId, position]) => {
             const player = this.players.get(playerId);
@@ -1079,19 +1248,6 @@ export class GameRenderer {
         });
     }
 
-    // 添加球员跟随球的方法
-    private movePlayerWithBall(x: number, y: number, team: string) {
-        const player = this.players.get(`${team}_0`); // 获取对应队伍的1号球员
-        if (player) {
-            gsap.to(player, {
-                duration: 0.5,
-                x: x,
-                y: y,
-                ease: "power2.out"
-            });
-        }
-    }
-
     // 添加获取随机球员的辅助方法
     private getRandomPlayer(team: string): PIXI.Container | undefined {
         // 收集指定队伍的所有球员
@@ -1113,8 +1269,7 @@ export class GameRenderer {
 
     // 添加一个球员复位的方法
     private resetPlayers() {
-        // 主队球员位置
-        const homePositions = [
+        const leftPositions = [
             { x: 150, y: 125 },
             { x: 150, y: 225 },
             { x: 150, y: 325 },
@@ -1122,8 +1277,7 @@ export class GameRenderer {
             { x: 250, y: 275 }
         ];
 
-        // 客队球员位置
-        const awayPositions = [
+        const rightPositions = [
             { x: 650, y: 125 },
             { x: 650, y: 225 },
             { x: 650, y: 325 },
@@ -1131,27 +1285,33 @@ export class GameRenderer {
             { x: 550, y: 275 }
         ];
 
-        // 重置所有主队球员
+        // 根据当前方向确定主客队目标位置
+        const homeTargetPositions = this.isHomeOnRight ? rightPositions : leftPositions;
+        const awayTargetPositions = this.isHomeOnRight ? leftPositions : rightPositions;
+
+        // 重置主队球员
         for (let i = 0; i < 5; i++) {
             const player = this.players.get(`home_${i}`);
             if (player) {
+                const targetPos = homeTargetPositions[i];
                 gsap.to(player, {
                     duration: 0.5,
-                    x: homePositions[i].x,
-                    y: homePositions[i].y,
+                    x: targetPos.x,
+                    y: targetPos.y,
                     ease: "power2.inOut"
                 });
             }
         }
 
-        // 重置所有客队球员
+        // 重置客队球员
         for (let i = 0; i < 5; i++) {
             const player = this.players.get(`away_${i}`);
             if (player) {
+                const targetPos = awayTargetPositions[i];
                 gsap.to(player, {
                     duration: 0.5,
-                    x: awayPositions[i].x,
-                    y: awayPositions[i].y,
+                    x: targetPos.x,
+                    y: targetPos.y,
                     ease: "power2.inOut"
                 });
             }
@@ -1166,7 +1326,7 @@ export class GameRenderer {
     }
 
     // 添加一个获取圆形范围内随机位置的辅助方法
-    private getRandomPositionAroundBall(radius: number, isHome: boolean): { x: number, y: number } {
+    private getRandomPositionAroundBall(radius: number): { x: number, y: number } {
         const angle = Math.random() * Math.PI * 2; // 随机角度
         const r = Math.sqrt(Math.random()) * radius; // 随机半径（使用平方根使分布更均匀）
         

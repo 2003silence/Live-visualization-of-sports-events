@@ -1,29 +1,15 @@
-@startuml 类图
-package "Core" {
-  class EventParser {
-    + parseEventText(text: string): GameEvent[]
-    - parseEvent(line: string): GameEvent
-  }
-  
-  class GameRenderer {
-    + render(state: GameState)
-    - updateScene()
-    - animateEvent()
-  }
-}
+@startuml
+skinparam classAttributeIconSize 0
 
-package "Types" {
-  enum GameStatus {
-    NOT_STARTED
-    IN_PROGRESS
-    FINISHED
-  }
-  
-  enum GameEventType {
+' 枚举
+enum GameEventType {
     QUARTER_START
     TWO_POINTS_MADE
     THREE_POINTS_MADE
+    TWO_POINTS_MISSED
+    THREE_POINTS_MISSED
     FREE_THROW_MADE
+    FREE_THROW_MISSED
     REBOUND
     ASSIST
     BLOCK
@@ -31,80 +17,127 @@ package "Types" {
     FOUL
     TURNOVER
     SUBSTITUTION
-  }
-  
-  class GameState {
-    + id: string
-    + homeTeam: Team
-    + awayTeam: Team
-    + quarter: number
-    + time: string
-    + events: GameEvent[]
-    + status: GameStatus
-  }
-  
-  class Team {
-    + id: string
-    + name: string
-    + logo: string
-    + players: Player[]
-    + stats: TeamStats
-  }
-  
-  class Player {
-    + id: string
-    + name: string
-    + number: string
-    + position: string
-    + team: string
-    + stats: PlayerStats
-  }
-  
-  class GameEvent {
-    + type: GameEventType
-    + time: string
-    + quarter: number
-    + team: string
-    + player: string
-    + points: number
-    + description: string
-  }
+    UNKNOWN
 }
 
-package "Components" {
-  class App {
-    - gameState: GameState
-    - loading: boolean
-    - isPlaying: boolean
-    + handlePlay()
-    + handlePause()
-    + handleNext()
-    + handlePrev()
-  }
-  
-  class GameViewer {
-    - renderer: GameRenderer
-    + render()
-  }
-  
-  class StatsViewer {
-    + homeTeam: Team
-    + awayTeam: Team
-    + render()
-  }
-  
-  class GameControl {
-    + onPlay: () => void
-    + onPause: () => void
-    + onNext: () => void
-    + onPrev: () => void
-  }
+enum GameStatus {
+    NOT_STARTED
+    IN_PROGRESS
+    FINISHED
 }
 
-GameState "1" *-- "2" Team
-Team "1" *-- "*" Player
-GameState "1" *-- "*" GameEvent
-App "1" *-- "1" GameViewer
-App "1" *-- "1" StatsViewer
-App "1" *-- "1" GameControl
+' 接口
+interface GameViewerRef {
+    +showStartText(): void
+    +updateGameState(state: GameState): void
+}
+
+' 类
+class GameRenderer {
+    -app: PIXI.Application
+    -court: PIXI.Container
+    -ball: PIXI.Sprite
+    -players: Map<string, PIXI.Container>
+    -animations: Map<GameEventType, Function>
+    -gameStartText: PIXI.Text
+    -currentQuarter: number
+    -isHomeOnRight: boolean
+    -isTeamFlipped: boolean
+    +constructor(container: HTMLDivElement)
+    +playEvent(event: GameEvent): void
+    +updateGameState(state: GameState): void
+    +resize(width: number, height: number): void
+    +destroy(): void
+    -drawCourt(): void
+    -createBall(): PIXI.Sprite
+    -createPlayers(): void
+    -initializeAnimations(): void
+    -showActionText(text: string, color: string, scale: number): void
+    -resetPlayers(): void
+    -getRandomPlayer(team: string): PIXI.Container
+    -getRandomOpponentPlayer(team: string): PIXI.Container
+    -getRandomPositionAroundBall(radius: number): {x: number, y: number}
+}
+
+class EventParser {
+    -static instance: EventParser
+    -playerMappings: Map<string, string[]>
+    +static getInstance(): EventParser
+    +parseEventText(text: string): GameEvent[]
+    -parseLine(line: string, quarter: number): GameEvent[]
+    -parseAction(action: string, team: string, quarter: number, time: string): GameEvent
+    -extractPlayerName(action: string): string
+    -determineEventType(action: string): GameEventType
+    +normalizePlayerName(name: string): string
+}
+
+class App {
+    -gameState: GameState
+    -loading: boolean
+    -loadingMessage: string
+    -isPlaying: boolean
+    -currentEventIndex: number
+    -playbackSpeed: number
+    +handlePlay(): void
+    +handlePause(): void
+    +handleNext(): void
+    +handlePrev(): void
+    +handleSpeedChange(speed: number): void
+    +handleSeek(index: number): void
+    -loadGameData(): Promise<void>
+    -processEvent(state: GameState, event: GameEvent): void
+}
+
+' 数据类型
+class GameState {
+    +id: string
+    +homeTeam: Team
+    +awayTeam: Team
+    +quarter: number
+    +time: string
+    +events: GameEvent[]
+    +status: GameStatus
+}
+
+class Team {
+    +id: string
+    +name: string
+    +logo: string
+    +players: Player[]
+    +stats: TeamStats
+}
+
+class Player {
+    +id: string
+    +name: string
+    +number: string
+    +position: string
+    +team: string
+    +stats: PlayerStats
+}
+
+class GameEvent {
+    +id: string
+    +type: GameEventType
+    +team: string
+    +player: string
+    +time: string
+    +quarter: number
+    +points: number
+    +description: string
+}
+
+' 关系
+GameRenderer --> GameEvent
+GameRenderer --> GameEventType
+EventParser --> GameEvent
+EventParser --> GameEventType
+App --> GameState
+App --> GameRenderer
+App --> EventParser
+GameState --> Team
+GameState --> GameEvent
+GameState --> GameStatus
+Team --> Player
+
 @enduml 

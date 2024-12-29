@@ -1,25 +1,78 @@
-@startuml 状态图
+@startuml
+skinparam StateFontSize 14
+skinparam StateAttributeFontSize 12
+
 [*] --> 初始化
 
 state 初始化 {
-  [*] --> 加载数据
-  加载数据 --> 解析事件
-  解析事件 --> 初始化完成
+    [*] --> 加载数据
+    加载数据 --> 创建渲染器
+    创建渲染器 --> 初始化完成
 }
 
-初始化 --> 暂停状态: 初始化完成
-
-state 播放状态 {
-  [*] --> 事件处理
-  事件处理 --> 更新画面
-  更新画面 --> 更新统计
-  更新统计 --> 事件处理: 还有下一个事件
+state 比赛回放 {
+    state "暂停" as Paused
+    state "播放" as Playing
+    state "事件处理" as EventProcessing {
+        state "动画播放" as Animation
+        state "数据更新" as DataUpdate
+        state "统计刷新" as StatsUpdate
+        
+        [*] --> Animation
+        Animation --> DataUpdate
+        DataUpdate --> StatsUpdate
+        StatsUpdate --> [*]
+    }
 }
 
-暂停状态 --> 播放状态: 点击播放
-播放状态 --> 暂停状态: 点击暂停
-播放状态 --> 结束状态: 所有事件播放完毕
+初始化 --> Paused : 初始化完成
 
-结束状态 --> 暂停状态: 重新播放
+Paused --> Playing : 点击播放
+Playing --> Paused : 点击暂停
+Playing --> EventProcessing : 处理事件
+EventProcessing --> Playing : 事件处理完成
+
+state 节间休息 {
+    state "显示节结束" as QuarterEnd
+    state "换场动画" as CourtChange
+    state "重置位置" as ResetPositions
+    
+    QuarterEnd --> CourtChange
+    CourtChange --> ResetPositions
+}
+
+Playing --> 节间休息 : 节结束
+节间休息 --> Playing : 新节开始
+
+state 系统控制 {
+    state "前进" as Forward
+    state "后退" as Backward
+    state "调速" as SpeedControl
+    state "跳转" as Seek
+}
+
+Paused --> Forward : 点击前进
+Paused --> Backward : 点击后退
+Playing --> SpeedControl : 调整速度
+Paused --> Seek : 拖动进度条
+
+Forward --> EventProcessing
+Backward --> EventProcessing
+Seek --> EventProcessing
+
+state 错误处理 {
+    state "数据错误" as DataError
+    state "渲染错误" as RenderError
+    state "重试" as Retry
+    
+    DataError --> Retry
+    RenderError --> Retry
+    Retry --> 初始化 : 重新加载
+}
+
+初始化 --> 错误处理 : 加载失败
+EventProcessing --> 错误处理 : 处理异常
+
+[*] --> 初始化
 
 @enduml 

@@ -1,26 +1,90 @@
-@startuml 用例图
-left to right direction
+@startuml
 skinparam packageStyle rectangle
+top to bottom direction
 
-actor 观众
-actor 系统管理员
+actor 用户 as User
+actor 系统管理员 as Admin
 
 rectangle "体育赛事直播可视化系统" {
-  usecase "观看比赛回放" as UC1
-  usecase "控制播放进度" as UC2
-  usecase "调整播放速度" as UC3
-  usecase "查看技术统计" as UC4
-  usecase "查看球员数据" as UC5
-  usecase "管理比赛数据" as UC6
-  usecase "系统维护" as UC7
-  
-  观众 --> UC1
-  观众 --> UC2
-  观众 --> UC3
-  观众 --> UC4
-  观众 --> UC5
-  
-  系统管理员 --> UC6
-  系统管理员 --> UC7
+    together {
+        package "比赛控制" {
+            together {
+                usecase "播放/暂停" as Play
+                usecase "前进/后退" as Next
+                usecase "调整速度" as Speed
+                usecase "跳转事件" as Seek
+            }
+        }
+
+        package "比赛显示" {
+            together {
+                usecase "比赛动画" as ViewAnimation
+                usecase "技术统计" as ViewStats
+            }
+            together {
+                usecase "换场动画" as ViewCourtChange
+                usecase "换人动画" as ViewSubstitution
+            }
+        }
+    }
+
+    package "比赛事件" {
+        together {
+            usecase "投篮" as Shot
+            usecase "罚球" as FreeThrow
+            usecase "篮板" as Rebound
+            usecase "抢断" as Steal
+        }
+        together {
+            usecase "失误" as Turnover
+            usecase "犯规" as Foul
+            usecase "盖帽" as Block
+        }
+    }
+
+    package "系统管理" {
+        together {
+            usecase "数据管理" as ManageData
+            usecase "导入记录" as ImportData
+            usecase "系统维护" as Maintain
+            usecase "数据备份" as Backup
+        }
+    }
 }
+
+' 用户关系
+User --> Play
+User --> Next
+User --> Speed
+User --> Seek
+User --> ViewAnimation
+User --> ViewStats
+
+' 事件关系
+ViewAnimation ..> Shot : <<include>>
+ViewAnimation ..> FreeThrow : <<include>>
+ViewAnimation ..> Rebound : <<include>>
+ViewAnimation ..> Steal : <<include>>
+ViewAnimation ..> Turnover : <<include>>
+ViewAnimation ..> Foul : <<include>>
+ViewAnimation ..> Block : <<include>>
+ViewAnimation ..> ViewCourtChange : <<include>>
+ViewAnimation ..> ViewSubstitution : <<include>>
+
+' 扩展关系
+Shot <.. "二分" : <<extend>>
+Shot <.. "三分" : <<extend>>
+FreeThrow <.. "命中" : <<extend>>
+FreeThrow <.. "不中" : <<extend>>
+
+' 管理员关系
+Admin --> ManageData
+Admin --> ImportData
+Admin --> Maintain
+Admin --> Backup
+
+' 管理功能关系
+ManageData ..> ImportData : <<include>>
+Maintain ..> Backup : <<include>>
+
 @enduml 
